@@ -20,11 +20,13 @@ export class Bet {
     if (!Number.isInteger(amountCents)) {
       throw new InvalidBetAmountError(`Bet amount must be an integer, got ${amountCents}`);
     }
+
     if (amountCents < Bet.MIN_AMOUNT_CENTS) {
       throw new InvalidBetAmountError(
         `Bet amount must be at least ${Bet.MIN_AMOUNT_CENTS} cents, got ${amountCents}`,
       );
     }
+
     if (amountCents > Bet.MAX_AMOUNT_CENTS) {
       throw new InvalidBetAmountError(
         `Bet amount must be at most ${Bet.MAX_AMOUNT_CENTS} cents, got ${amountCents}`,

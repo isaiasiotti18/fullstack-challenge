@@ -21,11 +21,13 @@ export function calculateCrashPoint(serverSeed: string, publicSeed: string, nonc
   const intValue = parseInt(hex.substring(0, 8), 16);
 
   const houseEdgeDivisor = Math.floor(100 / HOUSE_EDGE_PERCENT);
+
   if (intValue % houseEdgeDivisor === 0) {
     return 1.0;
   }
 
   const e = Math.floor((2 ** 32 / (intValue + 1)) * 100) / 100;
+
   return Math.max(1.0, e);
 }
 
