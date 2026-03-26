@@ -8,6 +8,9 @@ node_modules/
 # Build output
 dist/
 
+# Prisma generated client
+src/generated/
+
 # Bun lockfile (keep bun.lockb)
 # bun.lockb
 
@@ -35,3 +38,5 @@ coverage/
 tasks/
 
 CLAUDE.md
+
+.claude
