@@ -4,7 +4,7 @@
   "workspaces": [
     "services/*",
     "packages/*",
-    "frontend"
+    "frontend/*"
   ],
   "scripts": {
     "docker:up": "docker compose up",
@@ -12,6 +12,10 @@
     "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
+    "bun-types": "latest",
+    "eslint": "^10.1.0",
+    "prettier": "^3.8.1"
   }
 }
