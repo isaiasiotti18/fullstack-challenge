@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "bunx prisma db push --skip-generate && bun run --watch src/main.ts",
+    "dev": "bunx prisma db push && bun run --watch src/main.ts",
     "start": "bun run src/main.ts",
     "prisma:generate": "bunx prisma generate",
     "prisma:push": "bunx prisma db push",
