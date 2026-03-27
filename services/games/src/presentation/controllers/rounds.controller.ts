@@ -19,8 +19,12 @@ export class RoundsController {
   @Get("current")
   @ApiOperation({ summary: "Get current round state with bets" })
   @ApiResponse({ status: 200, type: CurrentRoundResponseDto })
-  async current(): Promise<CurrentRoundResponseDto | null> {
-    return this.getCurrentRound.execute();
+  async current(): Promise<CurrentRoundResponseDto | { status: string; message: string }> {
+    const round = await this.getCurrentRound.execute();
+    if (!round) {
+      return { status: "WAITING", message: "Waiting for next round" };
+    }
+    return round;
   }
 
   @Get("history")

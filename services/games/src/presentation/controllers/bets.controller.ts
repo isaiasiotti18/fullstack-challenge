@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../../infrastructure/auth/jwt-auth.guard";
 import { type AuthUser, CurrentUser } from "../../infrastructure/auth/current-user.decorator";
@@ -22,6 +31,7 @@ export class BetController {
   ) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Place a bet on the current round" })
@@ -36,6 +46,7 @@ export class BetController {
   }
 
   @Post("cashout")
+  @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Cash out current bet at current multiplier" })
