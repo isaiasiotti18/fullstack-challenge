@@ -70,8 +70,7 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
 
   async publish(routingKey: string, message: object): Promise<void> {
     if (!this.channel) {
-      this.logger.error(`Cannot publish to "${routingKey}": channel not available`);
-      return;
+      throw new Error(`Cannot publish to "${routingKey}": RabbitMQ channel not available`);
     }
 
     const buffer = Buffer.from(JSON.stringify(message));
