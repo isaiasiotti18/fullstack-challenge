@@ -4,6 +4,7 @@ import { RabbitMQPublisher } from "./rabbitmq.publisher";
 import type { BetPlacedMessage, RoundEndedMessage } from "./events";
 import type { WalletRepository } from "../../application/ports/wallet.repository";
 import { InsufficientBalanceError } from "../../domain/errors";
+import { PrismaService } from "../database/prisma.service";
 
 @Injectable()
 export class RabbitMQConsumer implements OnModuleInit {
@@ -12,6 +13,7 @@ export class RabbitMQConsumer implements OnModuleInit {
   constructor(
     private readonly rabbitMQService: RabbitMQService,
     private readonly rabbitMQPublisher: RabbitMQPublisher,
+    private readonly prisma: PrismaService,
     @Inject("WalletRepository")
     private readonly walletRepository: WalletRepository,
   ) {}
@@ -24,11 +26,24 @@ export class RabbitMQConsumer implements OnModuleInit {
     this.logger.log("Starting RabbitMQ consumer...");
 
     await this.rabbitMQService.consume(async (routingKey, message) => {
+      if (!message || typeof message !== "object") {
+        this.logger.warn(`Invalid message received for routing key: ${routingKey}`);
+        return;
+      }
+
       switch (routingKey) {
         case "bet.placed":
+          if (!("roundId" in message) || !("playerId" in message) || !("amountCents" in message)) {
+            this.logger.warn(`Invalid bet.placed message: missing required fields`);
+            return;
+          }
           await this.handleBetPlaced(message as BetPlacedMessage);
           break;
         case "round.ended":
+          if (!("roundId" in message) || !("crashPoint" in message) || !("payouts" in message)) {
+            this.logger.warn(`Invalid round.ended message: missing required fields`);
+            return;
+          }
           await this.handleRoundEnded(message as RoundEndedMessage);
           break;
         default:
@@ -41,6 +56,14 @@ export class RabbitMQConsumer implements OnModuleInit {
     this.logger.log(
       `Handling bet.placed: player ${msg.playerId}, round ${msg.roundId}, amount ${msg.amountCents} cents`,
     );
+
+    const alreadyProcessed = await this.prisma.processedEvent.findUnique({
+      where: { eventId: msg.eventId },
+    });
+    if (alreadyProcessed) {
+      this.logger.warn(`Skipping duplicate bet.placed event ${msg.eventId}`);
+      return;
+    }
 
     try {
       const wallet = await this.walletRepository.findByPlayerId(msg.playerId);
@@ -59,7 +82,16 @@ export class RabbitMQConsumer implements OnModuleInit {
       }
 
       wallet.debit(msg.amountCents);
-      await this.walletRepository.updateBalance(wallet.id, wallet.balanceCents);
+
+      await this.prisma.$transaction([
+        this.prisma.wallet.update({
+          where: { id: wallet.id },
+          data: { balanceCents: BigInt(wallet.balanceCents) },
+        }),
+        this.prisma.processedEvent.create({
+          data: { eventId: msg.eventId, routingKey: "bet.placed" },
+        }),
+      ]);
 
       this.logger.log(
         `Debited ${msg.amountCents} cents from player ${msg.playerId}. New balance: ${wallet.balanceCents} cents`,
@@ -99,7 +131,19 @@ export class RabbitMQConsumer implements OnModuleInit {
     );
 
     for (const payout of msg.payouts) {
+      const payoutEventId = `${msg.eventId}:${payout.playerId}`;
+
       try {
+        const alreadyProcessed = await this.prisma.processedEvent.findUnique({
+          where: { eventId: payoutEventId },
+        });
+        if (alreadyProcessed) {
+          this.logger.warn(
+            `Skipping duplicate payout for player ${payout.playerId} in round ${msg.roundId}`,
+          );
+          continue;
+        }
+
         const wallet = await this.walletRepository.findByPlayerId(payout.playerId);
 
         if (!wallet) {
@@ -110,7 +154,16 @@ export class RabbitMQConsumer implements OnModuleInit {
         }
 
         wallet.credit(payout.amountCents);
-        await this.walletRepository.updateBalance(wallet.id, wallet.balanceCents);
+
+        await this.prisma.$transaction([
+          this.prisma.wallet.update({
+            where: { id: wallet.id },
+            data: { balanceCents: BigInt(wallet.balanceCents) },
+          }),
+          this.prisma.processedEvent.create({
+            data: { eventId: payoutEventId, routingKey: "round.ended" },
+          }),
+        ]);
 
         this.logger.log(
           `Credited ${payout.amountCents} cents to player ${payout.playerId}. New balance: ${wallet.balanceCents} cents`,

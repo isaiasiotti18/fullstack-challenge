@@ -16,3 +16,11 @@ model Wallet {
 
   @@map("wallets")
 }
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id")
+  routingKey  String   @map("routing_key")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("processed_events")
+}
