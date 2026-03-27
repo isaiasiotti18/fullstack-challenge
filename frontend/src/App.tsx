@@ -1,13 +1,27 @@
-import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
+import { useAuth } from "react-oidc-context";
+import { AuthGuard } from "@/components/auth-guard";
+import { setAccessTokenGetter } from "@/services/api";
 
-function App() {
+function AppContent() {
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold text-neon">Crash Game</h1>
-        <Button>Apostar</Button>
-      </div>
+      <h1 className="text-4xl font-bold text-neon">Crash Game</h1>
     </div>
+  );
+}
+
+function App() {
+  const auth = useAuth();
+
+  useEffect(() => {
+    setAccessTokenGetter(() => auth.user?.access_token);
+  }, [auth.user]);
+
+  return (
+    <AuthGuard>
+      <AppContent />
+    </AuthGuard>
   );
 }
 
