@@ -20,6 +20,10 @@ export function calculateCrashPoint(serverSeed: string, publicSeed: string, nonc
 
   const intValue = parseInt(hex.substring(0, 8), 16);
 
+  // House edge: houseEdgeDivisor = floor(100 / 3) = 33, so ~3% of hashes
+  // (those divisible by 33) instant-crash at 1.00x. This gives the house a
+  // mathematical edge without manipulating the crash curve. The remaining
+  // ~97% of outcomes use the exponential distribution below.
   const houseEdgeDivisor = Math.floor(100 / HOUSE_EDGE_PERCENT);
 
   if (intValue % houseEdgeDivisor === 0) {

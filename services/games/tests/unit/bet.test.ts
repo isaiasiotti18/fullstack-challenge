@@ -82,6 +82,19 @@ describe("Bet", () => {
       const bet = new Bet("player-1", 500);
       expect(() => bet.cashOut(0.5)).toThrow(InvalidBetStatusError);
     });
+
+    it("cashOut at 1.001x floors correctly due to float precision", () => {
+      const bet = new Bet("player-1", 10000);
+      bet.cashOut(1.001);
+      // 10000 * 1.001 = 10009.999... in IEEE 754, Math.floor gives 10009
+      expect(bet.payoutCents).toBe(Math.floor(10000 * 1.001));
+    });
+
+    it("cashOut at 1.999x should floor payout correctly", () => {
+      const bet = new Bet("player-1", 333);
+      bet.cashOut(1.999);
+      expect(bet.payoutCents).toBe(665); // Math.floor(333 * 1.999) = Math.floor(665.667)
+    });
   });
 
   describe("markAsLost", () => {
