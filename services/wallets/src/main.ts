@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalFilters(new DomainExceptionFilter());
-  app.enableCors();
+  app.enableCors({ origin: process.env.CORS_ORIGIN || "http://localhost:3000" });
 
   const port = process.env.PORT ?? 4002;
   await app.listen(port, "0.0.0.0");
