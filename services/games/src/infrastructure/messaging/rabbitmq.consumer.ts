@@ -17,11 +17,24 @@ export class RabbitMQConsumer implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     await this.rabbitmq.consume(async (routingKey, message) => {
+      if (!message || typeof message !== "object") {
+        this.logger.warn(`Invalid message received for routing key: ${routingKey}`);
+        return;
+      }
+
       switch (routingKey) {
         case "wallet.debited":
+          if (!("roundId" in message) || !("playerId" in message) || !("amountCents" in message)) {
+            this.logger.warn(`Invalid wallet.debited message: missing required fields`);
+            return;
+          }
           await this.handleWalletDebited(message as WalletDebitedMessage);
           break;
         case "wallet.debit_failed":
+          if (!("roundId" in message) || !("playerId" in message) || !("reason" in message)) {
+            this.logger.warn(`Invalid wallet.debit_failed message: missing required fields`);
+            return;
+          }
           await this.handleWalletDebitFailed(message as WalletDebitFailedMessage);
           break;
         default:

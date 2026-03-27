@@ -20,6 +20,7 @@ import { GetPlayerBetsUseCase } from "./application/use-cases/get-player-bets.us
 import { GamesController } from "./presentation/controllers/games.controller";
 import { RoundsController } from "./presentation/controllers/rounds.controller";
 import { BetController, BetsController } from "./presentation/controllers/bets.controller";
+import { GameGateway } from "./presentation/gateways/game.gateway";
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, RabbitMQModule],
@@ -41,6 +42,13 @@ import { BetController, BetsController } from "./presentation/controllers/bets.c
     {
       provide: "MessagePublisher",
       useClass: RabbitMQPublisher,
+    },
+
+    // WebSocket gateway
+    GameGateway,
+    {
+      provide: "GameEventEmitter",
+      useExisting: GameGateway,
     },
 
     // Application services
