@@ -46,6 +46,16 @@ export class Round {
     return this._bets;
   }
 
+  get payouts(): Array<{ playerId: string; amountCents: number }> {
+    const result: Array<{ playerId: string; amountCents: number }> = [];
+    for (const [playerId, bet] of this._bets) {
+      if (bet.status === BetStatus.CASHED_OUT && bet.payoutCents !== null) {
+        result.push({ playerId, amountCents: bet.payoutCents });
+      }
+    }
+    return result;
+  }
+
   pullDomainEvents(): DomainEvent[] {
     const events = [...this._domainEvents];
     this._domainEvents = [];
@@ -68,6 +78,15 @@ export class Round {
     this._domainEvents.push(new BetPlacedEvent(this.id, playerId, amountCents));
 
     return bet;
+  }
+
+  removeBet(playerId: string): void {
+    if (this._status !== RoundStatus.BETTING) {
+      throw new InvalidRoundStateError(
+        `Cannot remove bet: round is ${this._status}, expected BETTING`,
+      );
+    }
+    this._bets.delete(playerId);
   }
 
   startRunning(): void {
@@ -97,7 +116,7 @@ export class Round {
       );
     }
 
-    if (currentMultiplier > this.crashPoint) {
+    if (currentMultiplier > this.crashPoint + 1e-9) {
       throw new InvalidCashOutMultiplierError(
         `Cannot cash out at ${currentMultiplier}x: round crashes at ${this.crashPoint}x`,
       );
@@ -105,14 +124,13 @@ export class Round {
 
     bet.cashOut(currentMultiplier);
 
+    const payoutCents = bet.payoutCents;
+    if (payoutCents === null) {
+      throw new Error("payoutCents must be set after cashOut");
+    }
+
     this._domainEvents.push(
-      new BetCashedOutEvent(
-        this.id,
-        playerId,
-        bet.amountCents,
-        currentMultiplier,
-        bet.payoutCents!,
-      ),
+      new BetCashedOutEvent(this.id, playerId, bet.amountCents, currentMultiplier, payoutCents),
     );
 
     return bet;

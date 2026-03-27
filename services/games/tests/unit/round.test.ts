@@ -155,6 +155,16 @@ describe("Round", () => {
       round.startRunning();
       expect(() => round.cashOut("player-1", 2.5)).toThrow(InvalidCashOutMultiplierError);
     });
+
+    it("cashOut at exactly crashPoint should succeed", () => {
+      const round = createRound({ crashPoint: 2.5 });
+      round.placeBet("player-1", 1000);
+      round.startRunning();
+
+      const bet = round.cashOut("player-1", 2.5);
+      expect(bet.status).toBe(BetStatus.CASHED_OUT);
+      expect(bet.payoutCents).toBe(2500);
+    });
   });
 
   describe("crash", () => {
@@ -203,6 +213,35 @@ describe("Round", () => {
       round.startRunning();
       round.crash();
       expect(() => round.crash()).toThrow(InvalidRoundStateError);
+    });
+  });
+
+  describe("removeBet", () => {
+    it("removes a bet during BETTING phase", () => {
+      const round = createRound();
+      round.placeBet("player-1", 500);
+      expect(round.bets.size).toBe(1);
+
+      round.removeBet("player-1");
+      expect(round.bets.size).toBe(0);
+      expect(round.bets.has("player-1")).toBe(false);
+    });
+
+    it("throws InvalidRoundStateError during RUNNING", () => {
+      const round = createRound();
+      round.placeBet("player-1", 500);
+      round.startRunning();
+
+      expect(() => round.removeBet("player-1")).toThrow(InvalidRoundStateError);
+    });
+
+    it("throws InvalidRoundStateError during CRASHED", () => {
+      const round = createRound();
+      round.placeBet("player-1", 500);
+      round.startRunning();
+      round.crash();
+
+      expect(() => round.removeBet("player-1")).toThrow(InvalidRoundStateError);
     });
   });
 
@@ -267,6 +306,50 @@ describe("Round", () => {
 
       const second = round.pullDomainEvents();
       expect(second).toHaveLength(0);
+    });
+  });
+
+  describe("payouts", () => {
+    it("returns empty array when no bets", () => {
+      const round = new Round({ id: "r-1", crashPoint: 2.0, serverSeedHash: "abc" });
+      expect(round.payouts).toEqual([]);
+    });
+
+    it("returns empty array when all bets are PENDING", () => {
+      const round = new Round({ id: "r-1", crashPoint: 5.0, serverSeedHash: "abc" });
+      round.placeBet("p-1", 1000);
+      round.placeBet("p-2", 2000);
+      expect(round.payouts).toEqual([]);
+    });
+
+    it("returns only CASHED_OUT bets with their payouts", () => {
+      const round = new Round({ id: "r-1", crashPoint: 5.0, serverSeedHash: "abc" });
+      round.placeBet("p-1", 1000);
+      round.placeBet("p-2", 2000);
+      round.placeBet("p-3", 3000);
+      round.startRunning();
+
+      round.cashOut("p-1", 2.0); // payout = 2000
+      round.cashOut("p-3", 1.5); // payout = 4500
+
+      const payouts = round.payouts;
+      expect(payouts).toHaveLength(2);
+      expect(payouts).toContainEqual({ playerId: "p-1", amountCents: 2000 });
+      expect(payouts).toContainEqual({ playerId: "p-3", amountCents: 4500 });
+    });
+
+    it("excludes LOST bets after crash", () => {
+      const round = new Round({ id: "r-1", crashPoint: 3.0, serverSeedHash: "abc" });
+      round.placeBet("p-1", 1000);
+      round.placeBet("p-2", 2000);
+      round.startRunning();
+
+      round.cashOut("p-1", 2.0);
+      round.crash();
+
+      const payouts = round.payouts;
+      expect(payouts).toHaveLength(1);
+      expect(payouts[0]).toEqual({ playerId: "p-1", amountCents: 2000 });
     });
   });
 });
