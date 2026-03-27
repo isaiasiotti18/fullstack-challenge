@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { GameLoopService } from "../services/game-loop.service";
 import type { BetRepository } from "../ports/bet.repository";
 import type { MessagePublisher } from "../ports/message-publisher";
+import type { GameEventEmitter } from "../ports/game-event-emitter";
 import { InvalidRoundStateError } from "../../domain/errors";
 
 @Injectable()
@@ -11,6 +12,7 @@ export class PlaceBetUseCase {
     private readonly gameLoop: GameLoopService,
     @Inject("BetRepository") private readonly betRepo: BetRepository,
     @Inject("MessagePublisher") private readonly publisher: MessagePublisher,
+    @Inject("GameEventEmitter") private readonly eventEmitter: GameEventEmitter,
   ) {}
 
   async execute(
@@ -37,6 +39,11 @@ export class PlaceBetUseCase {
       playerId,
       amountCents,
       timestamp: new Date().toISOString(),
+    });
+
+    this.eventEmitter.emitBetPlaced({
+      playerId: bet.playerId,
+      amountCents: bet.amountCents,
     });
 
     return {
