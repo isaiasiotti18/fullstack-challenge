@@ -1,4 +1,4 @@
-import { Bet } from "../../domain/bet";
+import { Bet, BetStatus } from "../../domain/bet";
 
 export interface BetRepository {
   save(bet: Bet, roundId: string): Promise<void>;
@@ -16,7 +16,7 @@ export interface BetRepository {
     Array<{
       playerId: string;
       amountCents: number;
-      status: string;
+      status: BetStatus;
       multiplierAtCashout: number | null;
       payoutCents: number | null;
       createdAt: Date;
@@ -32,7 +32,7 @@ export interface BetRepository {
       id: string;
       roundId: string;
       amountCents: number;
-      status: string;
+      status: BetStatus;
       multiplierAtCashout: number | null;
       payoutCents: number | null;
       createdAt: Date;
