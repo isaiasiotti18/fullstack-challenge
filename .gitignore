@@ -40,3 +40,5 @@ tasks/
 CLAUDE.md
 
 .claude
+NESTJS-WITH-PRISMA.md
+test-api.sh

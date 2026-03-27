@@ -1,15 +1,5 @@
-node_modules
-.git
-.gitignore
-
-# Tests
+node_modules/
+dist/
 tests/
-**/*.test.ts
-**/*.spec.ts
-
-# Env files
-.env
-.env.*
-
-# Docs
-README.md
+.git/
+*.log
