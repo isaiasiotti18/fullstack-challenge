@@ -1,6 +1,7 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type { RoundRepository } from "../ports/round.repository";
-import { InvalidRoundStateError } from "../../domain/errors";
+import { InvalidRoundStateError, RoundNotFoundError } from "../../domain/errors";
+import { RoundStatus } from "../../domain/round";
 
 @Injectable()
 export class VerifyRoundUseCase {
@@ -16,10 +17,10 @@ export class VerifyRoundUseCase {
     const data = await this.roundRepo.findRoundDataForVerification(roundId);
 
     if (!data) {
-      throw new NotFoundException(`Round ${roundId} not found`);
+      throw new RoundNotFoundError(`Round ${roundId} not found`);
     }
 
-    if (data.status !== "CRASHED") {
+    if (data.status !== RoundStatus.CRASHED) {
       throw new InvalidRoundStateError("Verification data is only available for crashed rounds");
     }
 

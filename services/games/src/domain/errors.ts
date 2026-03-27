@@ -16,3 +16,5 @@ export class InvalidBetAmountError extends DomainError {}
 export class InvalidCashOutMultiplierError extends DomainError {}
 
 export class InvalidBetStatusError extends DomainError {}
+
+export class RoundNotFoundError extends DomainError {}
