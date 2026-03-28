@@ -1,15 +1,10 @@
 import { useEffect } from "react";
 import { useAuth } from "react-oidc-context";
+import { Toaster } from "@/components/ui/sonner";
 import { AuthGuard } from "@/components/auth-guard";
+import { Header } from "@/components/header";
+import { GamePage } from "@/pages/game";
 import { setAccessTokenGetter } from "@/services/api";
-
-function AppContent() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <h1 className="text-4xl font-bold text-neon">Crash Game</h1>
-    </div>
-  );
-}
 
 function App() {
   const auth = useAuth();
@@ -20,7 +15,11 @@ function App() {
 
   return (
     <AuthGuard>
-      <AppContent />
+      <div className="flex min-h-screen flex-col bg-bg-primary">
+        <Header />
+        <GamePage />
+      </div>
+      <Toaster theme="dark" position="bottom-right" />
     </AuthGuard>
   );
 }
