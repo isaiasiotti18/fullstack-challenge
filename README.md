@@ -361,6 +361,66 @@ cd services/games && bun test tests/e2e     # requer docker:up
 cd frontend && bun test
 ```
 
+### Testes E2E — Playwright
+
+Testes de ponta a ponta simulando fluxos reais do jogador no browser, utilizando Playwright com Chromium. Requerem a stack completa rodando.
+
+**Cobertura (10 testes em 8 specs):**
+
+| Spec | Cenário |
+|------|---------|
+| `login.spec.ts` | Fluxo OIDC completo via Keycloak (redirect, login, callback) |
+| `wallet.spec.ts` | Auto-criação de wallet e exibição de saldo |
+| `bet-place.spec.ts` | Apostar durante fase BETTING, verificar toast e bet list |
+| `bet-lost.spec.ts` | Apostar → não sacar → crash → aposta marcada como perdida |
+| `bet-cashout.spec.ts` | Apostar → cash out durante RUNNING → saldo atualizado |
+| `validation.spec.ts` | Botão desabilitado durante RUNNING e após apostar (2 testes) |
+| `realtime.spec.ts` | Multiplicador atualiza em tempo real e round history após crash (2 testes) |
+| `provably-fair.spec.ts` | Verificação de seeds e crash point via endpoint `/verify` |
+
+**Seed determinística:**
+
+Os testes utilizam crash points pré-determinados via `TEST_CRASH_POINTS` (env var no Game Service), permitindo cenários reproduzíveis. O `docker-compose.test.yml` configura a sequência: `2.00x, 5.00x, 1.50x, 10.00x, 1.00x` (cíclica). Um `globalSetup` popula automaticamente a wallet do jogador teste com R$ 100.000 antes da execução.
+
+**Comandos:**
+
+```bash
+# 1. Subir stack com crash points determinísticos
+bun run docker:test
+
+# 2. Aguardar serviços ficarem prontos (~30s)
+docker compose -f docker-compose.yml -f docker-compose.test.yml ps
+
+# 3. Rodar todos os testes (~3-4 min)
+bun run test:e2e
+
+# 4. Modo visual interativo (abre UI do Playwright)
+bun run test:e2e:ui
+
+# 5. Rodar um teste específico
+cd packages/e2e && npx playwright test src/tests/login.spec.ts
+
+# 6. Seed manual (popular wallet do jogador teste)
+cd packages/e2e && bun run seed
+```
+
+**Arquitetura dos testes:**
+
+```
+packages/e2e/
+├── playwright.config.ts           # Chromium, timeout 120s, sequencial
+├── src/
+│   ├── global-setup.ts            # Seed automática antes dos testes
+│   ├── fixtures/
+│   │   └── auth.fixture.ts        # Página autenticada via token OIDC
+│   ├── helpers/
+│   │   ├── keycloak.ts            # Obter token via password grant
+│   │   ├── wait-for-phase.ts      # Aguardar fase do jogo (BETTING, RUNNING, etc.)
+│   │   └── seed.ts                # Popular wallet com saldo conhecido
+│   └── tests/
+│       ���── *.spec.ts              # 8 arquivos de teste
+```
+
 ---
 
 ---
