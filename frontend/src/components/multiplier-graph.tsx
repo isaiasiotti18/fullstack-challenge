@@ -56,7 +56,7 @@ export function MultiplierGraph() {
       drawGrid(ctx!, w, h);
 
       if (state.phase === "WAITING") {
-        drawCenteredText(ctx!, w, h, "Aguardando...", COLORS.textMuted, 28);
+        drawCenteredText(ctx!, w, h / 2, "Aguardando...", COLORS.textMuted, 28);
       } else if (state.phase === "BETTING") {
         drawBettingPhase(ctx!, w, h, state.bettingEndsAt, state.hash);
       } else if (state.phase === "RUNNING") {
