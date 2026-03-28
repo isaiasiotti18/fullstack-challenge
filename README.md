@@ -420,7 +420,7 @@ packages/e2e/
 │   │   ├── wait-for-phase.ts      # Aguardar fase do jogo (BETTING, RUNNING, etc.)
 │   │   └── seed.ts                # Popular wallet com saldo conhecido
 │   └── tests/
-│       ���── *.spec.ts              # 8 arquivos de teste
+│       └── *.spec.ts              # 8 arquivos de teste
 ```
 
 ---
