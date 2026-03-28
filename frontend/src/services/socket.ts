@@ -9,19 +9,17 @@ let socket: Socket<ServerToClientEvents> | null = null;
 export function connectSocket(): void {
   if (socket?.connected) return;
 
-  const store = useGameStore.getState();
-
   socket = io(SOCKET_URL, {
     transports: ["websocket"],
     autoConnect: false,
   });
 
-  socket.on("round:betting", store.setBettingPhase);
-  socket.on("round:start", store.setRoundStart);
+  socket.on("round:betting", (data) => useGameStore.getState().setBettingPhase(data));
+  socket.on("round:start", (data) => useGameStore.getState().setRoundStart(data));
   socket.on("round:tick", (data) => useGameStore.getState().setTick(data.multiplier));
-  socket.on("round:crash", store.setCrash);
-  socket.on("bet:placed", store.addBet);
-  socket.on("bet:cashedOut", store.addCashOut);
+  socket.on("round:crash", (data) => useGameStore.getState().setCrash(data));
+  socket.on("bet:placed", (data) => useGameStore.getState().addBet(data));
+  socket.on("bet:cashedOut", (data) => useGameStore.getState().addCashOut(data));
 
   socket.connect();
 }
