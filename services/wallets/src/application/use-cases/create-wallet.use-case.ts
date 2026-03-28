@@ -17,10 +17,12 @@ export class CreateWalletUseCase {
       return existing;
     }
 
+    const WELCOME_BONUS_CENTS = 100_000; // R$ 1.000,00
+
     const wallet = new Wallet({
       id: randomUUID(),
       playerId,
-      balanceCents: 0,
+      balanceCents: WELCOME_BONUS_CENTS,
     });
 
     await this.walletRepository.save(wallet);
