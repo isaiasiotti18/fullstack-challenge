@@ -228,7 +228,7 @@ O realm `crash-game` é importado automaticamente no `docker:up`. Nenhuma config
 | Admin UI       | `http://localhost:8080` (`admin` / `admin`)                                |
 | Realm          | `crash-game`                                                               |
 | Client ID      | `crash-game-client` (public, PKCE S256)                                    |
-| Usuário teste  | `player` / `player123`                                                     |
+| Usuários teste | `player` / `player123`, `player2` / `player123`, `player3` / `player123`   |
 | OIDC discovery | `http://localhost:8080/realms/crash-game/.well-known/openid-configuration` |
 
 ### Scaffold dos serviços de aplicação
