@@ -32,7 +32,7 @@ export async function seedTestPlayer(): Promise<void> {
   try {
     await client.connect();
     await client.query(
-      `UPDATE "Wallet" SET "balanceCents" = $1, "updatedAt" = NOW() WHERE "playerId" = $2`,
+      `UPDATE wallets SET balance_cents = $1, updated_at = NOW() WHERE player_id = $2`,
       [SEED_BALANCE_CENTS, wallet.playerId],
     );
     console.log(`Seeded wallet for player ${wallet.playerId} with ${SEED_BALANCE_CENTS} cents`);
@@ -42,7 +42,7 @@ export async function seedTestPlayer(): Promise<void> {
 }
 
 // Run directly if invoked as a script
-if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("seed.ts")) {
+if (require.main === module || process.argv[1]?.endsWith("seed.ts")) {
   seedTestPlayer()
     .then(() => console.log("Seed completed successfully"))
     .catch((err) => {
