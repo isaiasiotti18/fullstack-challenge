@@ -1,0 +1,148 @@
+/* Crash Game — Keycloak Login Theme Override */
+
+/* Background */
+body,
+.login-pf body {
+  background: #0f0f23 !important;
+}
+
+/* Card */
+.pf-v5-c-login__main,
+.pf-c-login__main,
+#kc-login,
+.card-pf,
+#kc-form-wrapper {
+  background: #12122b !important;
+  border: 1px solid #2a2a4a !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 40px rgba(0, 255, 136, 0.08) !important;
+}
+
+/* Header / Title area */
+.pf-v5-c-login__main-header,
+.pf-c-login__main-header,
+#kc-header-wrapper,
+#kc-header {
+  color: #00ff88 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 2px !important;
+}
+
+#kc-header-wrapper {
+  font-size: 2rem !important;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4) !important;
+}
+
+/* Page title ("Sign in to your account") */
+#kc-page-title,
+.pf-v5-c-login__main-header-desc,
+.pf-c-login__main-header-desc {
+  color: #e0e0e0 !important;
+}
+
+/* Labels */
+label,
+.pf-v5-c-form__label-text,
+.pf-c-form__label-text {
+  color: #8888aa !important;
+}
+
+/* Inputs */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+.pf-v5-c-form-control,
+.pf-c-form-control {
+  background: #1a1a3e !important;
+  border: 1px solid #2a2a4a !important;
+  border-radius: 8px !important;
+  color: #e0e0e0 !important;
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+.pf-v5-c-form-control:focus,
+.pf-c-form-control:focus {
+  border-color: #00ff88 !important;
+  box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.25) !important;
+  outline: none !important;
+}
+
+/* Primary button (Sign In) */
+input[type="submit"],
+.pf-v5-c-button.pf-m-primary,
+.pf-c-button.pf-m-primary,
+#kc-login {
+  background: #00ff88 !important;
+  color: #0f0f23 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  padding: 10px 16px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  cursor: pointer !important;
+  transition: background 0.2s ease !important;
+}
+
+input[type="submit"]:hover,
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-c-button.pf-m-primary:hover,
+#kc-login:hover {
+  background: #00cc6a !important;
+}
+
+/* Links */
+a,
+.pf-v5-c-button.pf-m-link,
+.pf-c-button.pf-m-link {
+  color: #00ff88 !important;
+}
+
+a:hover {
+  color: #00cc6a !important;
+}
+
+/* Error / Alert messages */
+.pf-v5-c-alert,
+.pf-c-alert,
+.alert-error,
+.kc-feedback-text {
+  background: rgba(255, 68, 68, 0.1) !important;
+  border-color: #ff4444 !important;
+  color: #ff4444 !important;
+  border-radius: 8px !important;
+}
+
+/* Footer / Info text */
+.pf-v5-c-login__main-footer,
+.pf-c-login__main-footer,
+#kc-info,
+#kc-info-wrapper {
+  color: #555577 !important;
+}
+
+/* Password toggle button */
+.pf-v5-c-button.pf-m-control,
+.pf-c-button.pf-m-control {
+  background: #1a1a3e !important;
+  border-color: #2a2a4a !important;
+  color: #8888aa !important;
+}
+
+/* Checkbox / Remember me */
+.pf-v5-c-check__label,
+.pf-c-check__label {
+  color: #8888aa !important;
+}
+
+/* Remove Keycloak default logo/branding area padding */
+.pf-v5-c-login__header,
+.pf-c-login__header {
+  display: none !important;
+}

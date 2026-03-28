@@ -1,6 +1,7 @@
 {
   "realm": "crash-game",
   "enabled": true,
+  "loginTheme": "crash-game",
   "sslRequired": "none",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
