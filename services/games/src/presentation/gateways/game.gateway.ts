@@ -68,4 +68,8 @@ export class GameGateway
   emitBetCashedOut(data: { playerId: string; multiplier: number; payoutCents: number }): void {
     this.server.emit("bet:cashedOut", data);
   }
+
+  emitBetRemoved(data: { playerId: string; reason: string }): void {
+    this.server.emit("bet:removed", data);
+  }
 }

@@ -6,6 +6,7 @@ import type {
   CrashEvent,
   BetPlacedEvent,
   BetCashedOutEvent,
+  BetRemovedEvent,
 } from "@/types/socket";
 
 interface GameState {
@@ -25,6 +26,7 @@ interface GameState {
   setCrash: (data: CrashEvent) => void;
   addBet: (data: BetPlacedEvent) => void;
   addCashOut: (data: BetCashedOutEvent) => void;
+  removeBet: (data: BetRemovedEvent) => void;
   reset: () => void;
 }
 
@@ -90,6 +92,11 @@ export const useGameStore = create<GameState>((set) => ({
             }
           : bet,
       ),
+    })),
+
+  removeBet: (data) =>
+    set((state) => ({
+      bets: state.bets.filter((bet) => bet.playerId !== data.playerId),
     })),
 
   reset: () =>

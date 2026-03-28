@@ -1,4 +1,5 @@
 import { io, type Socket } from "socket.io-client";
+import { toast } from "sonner";
 import type { ServerToClientEvents } from "@/types/socket";
 import { useGameStore } from "@/stores/game-store";
 
@@ -20,6 +21,10 @@ export function connectSocket(): void {
   socket.on("round:crash", (data) => useGameStore.getState().setCrash(data));
   socket.on("bet:placed", (data) => useGameStore.getState().addBet(data));
   socket.on("bet:cashedOut", (data) => useGameStore.getState().addCashOut(data));
+  socket.on("bet:removed", (data) => {
+    useGameStore.getState().removeBet(data);
+    toast.error(`Aposta rejeitada: ${data.reason}`);
+  });
 
   socket.connect();
 }

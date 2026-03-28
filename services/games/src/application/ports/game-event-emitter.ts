@@ -15,4 +15,6 @@ export interface GameEventEmitter {
   emitBetPlaced(data: { playerId: string; amountCents: number }): void;
 
   emitBetCashedOut(data: { playerId: string; multiplier: number; payoutCents: number }): void;
+
+  emitBetRemoved(data: { playerId: string; reason: string }): void;
 }

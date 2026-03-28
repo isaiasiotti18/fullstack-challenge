@@ -32,6 +32,11 @@ export interface BetCashedOutEvent {
   payoutCents: number;
 }
 
+export interface BetRemovedEvent {
+  playerId: string;
+  reason: string;
+}
+
 export interface ServerToClientEvents {
   "round:betting": (data: BettingPhaseEvent) => void;
   "round:start": (data: RoundStartEvent) => void;
@@ -39,4 +44,5 @@ export interface ServerToClientEvents {
   "round:crash": (data: CrashEvent) => void;
   "bet:placed": (data: BetPlacedEvent) => void;
   "bet:cashedOut": (data: BetCashedOutEvent) => void;
+  "bet:removed": (data: BetRemovedEvent) => void;
 }

@@ -1,8 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit, Inject } from "@nestjs/common";
 import { RabbitMQService } from "./rabbitmq.service";
 import { GameLoopService } from "../../application/services/game-loop.service";
 import type { BetRepository } from "../../application/ports/bet.repository";
-import { Inject } from "@nestjs/common";
+import type { GameEventEmitter } from "../../application/ports/game-event-emitter";
 import type { WalletDebitedMessage, WalletDebitFailedMessage } from "./events";
 
 @Injectable()
@@ -13,6 +13,7 @@ export class RabbitMQConsumer implements OnModuleInit {
     private readonly rabbitmq: RabbitMQService,
     private readonly gameLoop: GameLoopService,
     @Inject("BetRepository") private readonly betRepo: BetRepository,
+    @Inject("GameEventEmitter") private readonly eventEmitter: GameEventEmitter,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -57,6 +58,7 @@ export class RabbitMQConsumer implements OnModuleInit {
     try {
       this.gameLoop.removeBetFromCurrentRound(message.playerId);
       await this.betRepo.deleteBet(message.roundId, message.playerId);
+      this.eventEmitter.emitBetRemoved({ playerId: message.playerId, reason: message.reason });
       this.logger.log(`Removed bet for player ${message.playerId} from round ${message.roundId}`);
     } catch (error) {
       this.logger.error(`Failed to remove bet after debit failure: ${error}`);
