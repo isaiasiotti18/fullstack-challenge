@@ -55,7 +55,15 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
       this.publicSeed = randomUUID();
       this.nonce++;
 
-      const crashPoint = calculateCrashPoint(this.serverSeed, this.publicSeed, this.nonce);
+      let crashPoint = calculateCrashPoint(this.serverSeed, this.publicSeed, this.nonce);
+
+      const testPoints = process.env.TEST_CRASH_POINTS;
+      if (testPoints) {
+        const points = testPoints.split(",").map(Number).filter((n) => n >= 1);
+        if (points.length > 0) {
+          crashPoint = points[(this.nonce - 1) % points.length];
+        }
+      }
       const hash = hashServerSeed(this.serverSeed);
 
       this.currentRound = new Round({
