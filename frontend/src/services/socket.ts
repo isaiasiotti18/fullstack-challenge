@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import type { ServerToClientEvents } from "@/types/socket";
 import { useGameStore } from "@/stores/game-store";
 
-const SOCKET_URL = "http://localhost:4001";
+const SOCKET_URL = "http://localhost:8000";
 
 let socket: Socket<ServerToClientEvents> | null = null;
 
@@ -11,6 +11,7 @@ export function connectSocket(): void {
   if (socket?.connected) return;
 
   socket = io(SOCKET_URL, {
+    path: "/ws/socket.io",
     transports: ["websocket"],
     autoConnect: false,
   });

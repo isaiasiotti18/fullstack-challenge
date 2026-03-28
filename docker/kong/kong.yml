@@ -16,3 +16,11 @@ services:
         paths:
           - /wallets
         strip_path: true
+
+  - name: games-ws
+    url: http://games:4001
+    routes:
+      - name: games-ws-route
+        paths:
+          - /ws
+        strip_path: true
