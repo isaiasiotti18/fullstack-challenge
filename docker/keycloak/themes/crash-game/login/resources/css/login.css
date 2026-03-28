@@ -1,148 +1,168 @@
-/* Crash Game — Keycloak Login Theme Override */
+/* Crash Game — Keycloak Login Theme */
 
-/* Background */
-body,
-.login-pf body {
+:root {
+  --keycloak-bg-logo-url: none;
+  --keycloak-card-top-color: #00ff88;
+}
+
+/* ── Background ── */
+.login-pf body,
+body {
   background: #0f0f23 !important;
 }
 
-/* Card */
-.pf-v5-c-login__main,
-.pf-c-login__main,
-#kc-login,
-.card-pf,
-#kc-form-wrapper {
+/* ── Center the login container ── */
+.pf-v5-c-login {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+}
+
+.pf-v5-c-login__container {
+  grid-template-columns: minmax(auto, 420px) !important;
+  grid-template-areas: "header" "main" !important;
+  justify-content: center !important;
+}
+
+/* ── Header (CRASH-GAME title) ── */
+#kc-header-wrapper {
+  font-size: 2rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 4px !important;
+  color: #00ff88 !important;
+  text-shadow: 0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 255, 136, 0.2) !important;
+  text-align: center !important;
+  padding-bottom: 1rem !important;
+}
+
+/* ── Card ── */
+.pf-v5-c-login__main {
   background: #12122b !important;
   border: 1px solid #2a2a4a !important;
   border-radius: 12px !important;
-  box-shadow: 0 0 40px rgba(0, 255, 136, 0.08) !important;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 255, 136, 0.06) !important;
 }
 
-/* Header / Title area */
-.pf-v5-c-login__main-header,
-.pf-c-login__main-header,
-#kc-header-wrapper,
-#kc-header {
-  color: #00ff88 !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 2px !important;
+.pf-v5-c-login__main-header {
+  border-top: 3px solid #00ff88 !important;
+  border-radius: 12px 12px 0 0 !important;
 }
 
-#kc-header-wrapper {
-  font-size: 2rem !important;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.4) !important;
-}
-
-/* Page title ("Sign in to your account") */
-#kc-page-title,
-.pf-v5-c-login__main-header-desc,
-.pf-c-login__main-header-desc {
+/* ── Title ("Sign in to your account") ── */
+.pf-v5-c-login__main-header .pf-v5-c-title {
   color: #e0e0e0 !important;
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
 }
 
-/* Labels */
-label,
-.pf-v5-c-form__label-text,
-.pf-c-form__label-text {
-  color: #8888aa !important;
+/* ── Labels ── */
+.pf-v5-c-form__label-text {
+  color: #c0c0d8 !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
 }
 
-/* Inputs */
-input[type="text"],
-input[type="password"],
-input[type="email"],
-.pf-v5-c-form-control,
-.pf-c-form-control {
-  background: #1a1a3e !important;
+/* ── Inputs ── */
+.pf-v5-c-form-control {
+  background-color: #1a1a3e !important;
   border: 1px solid #2a2a4a !important;
   border-radius: 8px !important;
   color: #e0e0e0 !important;
-  padding: 10px 12px !important;
-  font-size: 14px !important;
 }
 
-input[type="text"]:focus,
-input[type="password"]:focus,
-input[type="email"]:focus,
-.pf-v5-c-form-control:focus,
-.pf-c-form-control:focus {
+.pf-v5-c-form-control input {
+  background: transparent !important;
+  color: #e0e0e0 !important;
+}
+
+.pf-v5-c-form-control:focus-within {
   border-color: #00ff88 !important;
   box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.25) !important;
   outline: none !important;
 }
 
-/* Primary button (Sign In) */
-input[type="submit"],
-.pf-v5-c-button.pf-m-primary,
-.pf-c-button.pf-m-primary,
-#kc-login {
-  background: #00ff88 !important;
-  color: #0f0f23 !important;
-  border: none !important;
-  border-radius: 8px !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  padding: 10px 16px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 1px !important;
-  cursor: pointer !important;
-  transition: background 0.2s ease !important;
-}
-
-input[type="submit"]:hover,
-.pf-v5-c-button.pf-m-primary:hover,
-.pf-c-button.pf-m-primary:hover,
-#kc-login:hover {
-  background: #00cc6a !important;
-}
-
-/* Links */
-a,
-.pf-v5-c-button.pf-m-link,
-.pf-c-button.pf-m-link {
-  color: #00ff88 !important;
-}
-
-a:hover {
-  color: #00cc6a !important;
-}
-
-/* Error / Alert messages */
-.pf-v5-c-alert,
-.pf-c-alert,
-.alert-error,
-.kc-feedback-text {
-  background: rgba(255, 68, 68, 0.1) !important;
-  border-color: #ff4444 !important;
-  color: #ff4444 !important;
-  border-radius: 8px !important;
-}
-
-/* Footer / Info text */
-.pf-v5-c-login__main-footer,
-.pf-c-login__main-footer,
-#kc-info,
-#kc-info-wrapper {
-  color: #555577 !important;
-}
-
-/* Password toggle button */
-.pf-v5-c-button.pf-m-control,
-.pf-c-button.pf-m-control {
-  background: #1a1a3e !important;
+/* ── Password toggle button ── */
+.pf-v5-c-button.pf-m-control {
+  background-color: #1a1a3e !important;
   border-color: #2a2a4a !important;
   color: #8888aa !important;
 }
 
-/* Checkbox / Remember me */
-.pf-v5-c-check__label,
-.pf-c-check__label {
+.pf-v5-c-button.pf-m-control:hover {
+  color: #00ff88 !important;
+}
+
+/* ── Primary Button (Sign In) ── */
+.pf-v5-c-button.pf-m-primary {
+  background-color: #00ff88 !important;
+  color: #0f0f23 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  font-size: 0.875rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  padding: 0.75rem 1.25rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.pf-v5-c-button.pf-m-primary:hover {
+  background-color: #00cc6a !important;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3) !important;
+}
+
+/* ── Links ── */
+.pf-v5-c-button.pf-m-link,
+a {
+  color: #00ff88 !important;
+}
+
+a:hover,
+.pf-v5-c-button.pf-m-link:hover {
+  color: #00cc6a !important;
+}
+
+/* ── Checkbox (Remember me) ── */
+.pf-v5-c-check__label {
   color: #8888aa !important;
 }
 
-/* Remove Keycloak default logo/branding area padding */
-.pf-v5-c-login__header,
-.pf-c-login__header {
+/* ── Footer ── */
+.pf-v5-c-login__main-footer {
+  color: #555577 !important;
+}
+
+.pf-v5-c-login__main-footer-band {
+  border-top-color: #2a2a4a !important;
+}
+
+/* ── Alerts / Errors ── */
+.pf-v5-c-alert.pf-m-danger,
+.pf-v5-c-alert.pf-m-warning {
+  background-color: rgba(255, 68, 68, 0.1) !important;
+  border-color: #ff4444 !important;
+}
+
+.pf-v5-c-alert__title {
+  color: #ff4444 !important;
+}
+
+/* ── Helper text ── */
+.pf-v5-c-helper-text__item-text {
+  color: #8888aa !important;
+}
+
+/* ── Hide Keycloak branding logo ── */
+.pf-v5-c-login__header {
   display: none !important;
+}
+
+/* ── Dark mode overrides for PatternFly tokens ── */
+.pf-v5-theme-dark {
+  --pf-v5-global--BackgroundColor--100: #0f0f23 !important;
+  --pf-v5-global--BackgroundColor--200: #12122b !important;
+  --pf-v5-global--Color--100: #e0e0e0 !important;
+  --pf-v5-global--Color--200: #8888aa !important;
+  --pf-v5-global--BorderColor--100: #2a2a4a !important;
 }
