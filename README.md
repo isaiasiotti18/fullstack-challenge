@@ -231,6 +231,8 @@ O realm `crash-game` é importado automaticamente no `docker:up`. Nenhuma config
 | Usuários teste | `player` / `player123`, `player2` / `player123`, `player3` / `player123`   |
 | OIDC discovery | `http://localhost:8080/realms/crash-game/.well-known/openid-configuration` |
 
+Para testar multiplayer, abra abas diferentes (ou navegadores em modo anônimo) e logue com usuários distintos. O Keycloak importa o realm apenas no primeiro boot — se alterar o `realm-export.json`, execute `bun run docker:prune && bun run docker:up` para aplicar.
+
 ### Scaffold dos serviços de aplicação
 
 **Backend — pronto.** Ambos os serviços já possuem scaffold NestJS funcional com estrutura DDD e rota `GET /health`. Estão integrados ao `docker-compose.yml` e roteados pelo Kong.
