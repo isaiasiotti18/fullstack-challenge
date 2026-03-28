@@ -1,4 +1,5 @@
 import { useGameSocket } from "@/hooks/use-game-socket";
+import { useGameStore } from "@/stores/game-store";
 import { MultiplierGraph } from "@/components/multiplier-graph";
 import { BetControls } from "@/components/bet-controls";
 import { BetList } from "@/components/bet-list";
@@ -7,8 +8,22 @@ import { RoundHistory } from "@/components/round-history";
 export function GamePage() {
   useGameSocket();
 
+  const phase = useGameStore((s) => s.phase);
+  const multiplier = useGameStore((s) => s.multiplier);
+  const roundId = useGameStore((s) => s.roundId);
+  const crashPoint = useGameStore((s) => s.crashPoint);
+
   return (
     <div className="flex flex-1 flex-col">
+      <span
+        data-testid="game-phase"
+        data-phase={phase}
+        data-multiplier={multiplier}
+        data-round-id={roundId ?? ""}
+        data-crash-point={crashPoint ?? ""}
+        className="hidden"
+      />
+
       <RoundHistory />
 
       <div className="grid flex-1 gap-4 p-4 md:grid-cols-[1fr_360px]">

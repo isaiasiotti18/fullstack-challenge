@@ -42,6 +42,7 @@ export function RoundHistory() {
         <Badge
           key={round.id}
           variant="outline"
+          data-testid="round-badge"
           className={`shrink-0 font-mono text-xs ${
             round.crashPoint < 2 ? "border-crash/50 text-crash" : "border-neon/50 text-neon"
           }`}

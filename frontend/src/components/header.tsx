@@ -25,17 +25,17 @@ export function Header() {
 
       <div className="flex items-center gap-4">
         <div className="text-right">
-          <p className="text-sm text-text-secondary">{username}</p>
+          <p className="text-sm text-text-secondary" data-testid="username">{username}</p>
           {wallet.isLoading ? (
             <Skeleton className="h-5 w-20" />
           ) : (
-            <p className="font-mono text-sm font-semibold text-text-primary">
+            <p className="font-mono text-sm font-semibold text-text-primary" data-testid="balance">
               {wallet.data ? formatCents(wallet.data.balanceCents) : "—"}
             </p>
           )}
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => auth.signoutRedirect()}>
+        <Button variant="outline" size="sm" data-testid="logout-button" onClick={() => auth.signoutRedirect()}>
           Sair
         </Button>
       </div>

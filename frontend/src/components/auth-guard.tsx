@@ -25,7 +25,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6">
         <h1 className="text-4xl font-bold text-neon">Crash Game</h1>
-        <Button size="lg" onClick={() => auth.signinRedirect()}>
+        <Button size="lg" data-testid="login-button" onClick={() => auth.signinRedirect()}>
           Entrar
         </Button>
       </div>

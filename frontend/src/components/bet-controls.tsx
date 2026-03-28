@@ -70,6 +70,7 @@ export function BetControls() {
             value={amountStr}
             onChange={(e) => setAmountStr(e.target.value)}
             disabled={phase !== "BETTING" || hasBet}
+            data-testid="bet-amount-input"
             className="border-border-game bg-bg-secondary font-mono"
           />
           <div className="flex gap-2">
@@ -107,6 +108,7 @@ export function BetControls() {
           <Button
             className="w-full bg-neon text-bg-primary hover:bg-neon-hover"
             size="lg"
+            data-testid="cashout-button"
             onClick={handleCashOut}
             disabled={cashOutMutation.isPending}
           >
@@ -118,6 +120,7 @@ export function BetControls() {
           <Button
             className="w-full"
             size="lg"
+            data-testid="place-bet-button"
             onClick={handlePlaceBet}
             disabled={!canBet || placeBet.isPending}
           >

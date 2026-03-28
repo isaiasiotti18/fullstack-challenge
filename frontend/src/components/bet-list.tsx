@@ -18,6 +18,7 @@ export function BetList() {
             {bets.map((bet) => (
               <div
                 key={bet.playerId}
+                data-testid="bet-entry"
                 className="flex items-center justify-between rounded px-2 py-1.5 text-sm"
               >
                 <span className="font-mono text-text-secondary">
@@ -49,15 +50,15 @@ function BetStatus({
 }) {
   if (status === "CASHED_OUT") {
     return (
-      <span className="font-mono text-neon">
+      <span className="font-mono text-neon" data-testid="bet-status">
         {multiplier?.toFixed(2)}x ({formatCents(payoutCents ?? 0)})
       </span>
     );
   }
 
   if (status === "LOST") {
-    return <span className="font-mono text-crash">Perdeu</span>;
+    return <span className="font-mono text-crash" data-testid="bet-status">Perdeu</span>;
   }
 
-  return <span className="font-mono text-text-muted">Pendente</span>;
+  return <span className="font-mono text-text-muted" data-testid="bet-status">Pendente</span>;
 }
