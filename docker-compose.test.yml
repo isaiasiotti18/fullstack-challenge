@@ -1,0 +1,4 @@
+services:
+  games:
+    environment:
+      - TEST_CRASH_POINTS=2.00,5.00,1.50,10.00,1.00
