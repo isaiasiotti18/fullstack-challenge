@@ -28,8 +28,12 @@ export class CashOutUseCase {
     const currentMultiplier = this.gameLoop.getCurrentMultiplier();
     const bet = round.cashOut(playerId, currentMultiplier);
 
-    const multiplier = bet.cashOutMultiplier!;
-    const payout = bet.payoutCents!;
+    if (bet.cashOutMultiplier == null || bet.payoutCents == null) {
+      throw new InvalidRoundStateError("Cash out failed: multiplier or payout not set");
+    }
+
+    const multiplier = bet.cashOutMultiplier;
+    const payout = bet.payoutCents;
 
     await this.betRepo.updateCashOut(round.id, playerId, multiplier, payout);
 
