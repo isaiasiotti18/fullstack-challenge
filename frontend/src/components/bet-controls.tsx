@@ -32,19 +32,14 @@ export function BetControls() {
   const hasBet = playerId ? bets.some((b) => b.playerId === playerId) : false;
   const playerBet = playerId ? bets.find((b) => b.playerId === playerId) : undefined;
   const canBet =
-    phase === "BETTING" && !hasBet && amount >= MIN_BET_REAIS && amount <= MAX_BET_REAIS && amountCents <= balanceCents;
+    phase === "BETTING" && !hasBet && amount >= MIN_BET_REAIS && amount <= MAX_BET_REAIS;
   const canCashOut = phase === "RUNNING" && playerBet?.status === "PENDING";
 
   function handlePlaceBet() {
-    if (amountCents > balanceCents) {
-      toast.error(`Saldo insuficiente. Disponível: ${formatCents(balanceCents)}`);
-      return;
-    }
-
     placeBet.mutate(
       { amountCents },
       {
-        onSuccess: () => toast.success(`Aposta de ${formatCents(amountCents)} realizada`),
+        onSuccess: () => toast.success(`Aposta de ${formatCents(amountCents)} enviada`),
         onError: (err) => toast.error(err.message),
       },
     );
