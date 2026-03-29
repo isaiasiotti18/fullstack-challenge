@@ -1,12 +1,16 @@
 import { useGameSocket } from "@/hooks/use-game-socket";
+import { useAutoBet } from "@/hooks/use-auto-bet";
 import { useGameStore } from "@/stores/game-store";
 import { MultiplierGraph } from "@/components/multiplier-graph";
 import { BetControls } from "@/components/bet-controls";
+import { AutoBetPanel } from "@/components/auto-bet-panel";
 import { BetList } from "@/components/bet-list";
+import { Leaderboard } from "@/components/leaderboard";
 import { RoundHistory } from "@/components/round-history";
 
 export function GamePage() {
   useGameSocket();
+  useAutoBet();
 
   const phase = useGameStore((s) => s.phase);
   const multiplier = useGameStore((s) => s.multiplier);
@@ -31,7 +35,9 @@ export function GamePage() {
 
         <div className="flex flex-col gap-4">
           <BetControls />
+          <AutoBetPanel />
           <BetList />
+          <Leaderboard />
         </div>
       </div>
     </div>
