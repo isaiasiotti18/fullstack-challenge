@@ -10,10 +10,16 @@ const COLORS = {
   grid: "#1a1a3e",
 };
 
+interface CurvePoint {
+  m: number; // multiplier
+  t: number; // timestamp (ms relative to round start)
+}
+
 export function MultiplierGraph() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
-  const curvePointsRef = useRef<number[]>([]);
+  const curvePointsRef = useRef<CurvePoint[]>([]);
+  const roundStartRef = useRef(0);
   const crashFlashRef = useRef(0);
 
   useEffect(() => {
@@ -47,6 +53,7 @@ export function MultiplierGraph() {
 
       if (state.phase === "RUNNING" && prevPhase !== "RUNNING") {
         curvePointsRef.current = [];
+        roundStartRef.current = Date.now();
       }
       if (state.phase === "CRASHED" && prevPhase !== "CRASHED") {
         crashFlashRef.current = 1;
@@ -64,11 +71,12 @@ export function MultiplierGraph() {
       } else if (state.phase === "BETTING") {
         drawBettingPhase(ctx!, w, h, state.bettingEndsAt, state.hash);
       } else if (state.phase === "RUNNING") {
-        const lastPoint = curvePointsRef.current[curvePointsRef.current.length - 1];
-        if (lastPoint !== state.multiplier) {
-          curvePointsRef.current.push(state.multiplier);
+        const points = curvePointsRef.current;
+        const last = points[points.length - 1];
+        if (!last || last.m !== state.multiplier) {
+          points.push({ m: state.multiplier, t: Date.now() - roundStartRef.current });
         }
-        drawCurve(ctx!, w, h, curvePointsRef.current);
+        drawCurve(ctx!, w, h, points);
         drawMultiplierText(ctx!, w, h, state.multiplier, COLORS.curve);
       } else if (state.phase === "CRASHED") {
         drawCurve(ctx!, w, h, curvePointsRef.current);
@@ -119,33 +127,76 @@ function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number) {
   }
 }
 
-function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number, points: number[]) {
+function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number, points: CurvePoint[]) {
   if (points.length < 2) return;
 
-  const maxMultiplier = Math.max(...points, 2);
   const padding = 40;
   const graphW = w - padding * 2;
   const graphH = h - padding * 2;
 
+  const maxTime = Math.max(points[points.length - 1].t, 5000);
+  const maxMultiplier = Math.max(points[points.length - 1].m, 2);
+
+  // Convert to screen coordinates
+  const coords = points.map((p) => ({
+    x: padding + (p.t / maxTime) * graphW,
+    y: h - padding - ((p.m - 1) / (maxMultiplier - 1)) * graphH,
+  }));
+
+  // Draw smooth curve using quadratic Bezier
   ctx.beginPath();
+  ctx.moveTo(coords[0].x, coords[0].y);
+
+  for (let i = 1; i < coords.length; i++) {
+    const midX = (coords[i - 1].x + coords[i].x) / 2;
+    const midY = (coords[i - 1].y + coords[i].y) / 2;
+    ctx.quadraticCurveTo(coords[i - 1].x, coords[i - 1].y, midX, midY);
+  }
+  ctx.lineTo(coords[coords.length - 1].x, coords[coords.length - 1].y);
+
+  // Gradient fill under the curve
+  const lastCoord = coords[coords.length - 1];
+  const gradient = ctx.createLinearGradient(0, lastCoord.y, 0, h - padding);
+  gradient.addColorStop(0, "rgba(0, 255, 136, 0.15)");
+  gradient.addColorStop(1, "rgba(0, 255, 136, 0)");
+
+  ctx.save();
+  ctx.lineTo(lastCoord.x, h - padding);
+  ctx.lineTo(coords[0].x, h - padding);
+  ctx.closePath();
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.restore();
+
+  // Redraw curve stroke on top of fill
+  ctx.beginPath();
+  ctx.moveTo(coords[0].x, coords[0].y);
+  for (let i = 1; i < coords.length; i++) {
+    const midX = (coords[i - 1].x + coords[i].x) / 2;
+    const midY = (coords[i - 1].y + coords[i].y) / 2;
+    ctx.quadraticCurveTo(coords[i - 1].x, coords[i - 1].y, midX, midY);
+  }
+  ctx.lineTo(lastCoord.x, lastCoord.y);
+
   ctx.strokeStyle = COLORS.curve;
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
-
-  for (let i = 0; i < points.length; i++) {
-    const x = padding + (i / (points.length - 1)) * graphW;
-    const y = h - padding - ((points[i] - 1) / (maxMultiplier - 1)) * graphH;
-
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-
+  ctx.lineCap = "round";
   ctx.stroke();
 
-  // Glow
+  // Glow effect
   ctx.shadowColor = COLORS.curve;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 10;
   ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Dot at the tip
+  ctx.beginPath();
+  ctx.arc(lastCoord.x, lastCoord.y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.curve;
+  ctx.shadowColor = COLORS.curve;
+  ctx.shadowBlur = 12;
+  ctx.fill();
   ctx.shadowBlur = 0;
 }
 
