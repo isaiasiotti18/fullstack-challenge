@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { RabbitMQService } from "./rabbitmq.service";
 import { RabbitMQPublisher } from "./rabbitmq.publisher";
 import type { BetPlacedMessage, RoundEndedMessage } from "./events";
@@ -7,7 +7,7 @@ import { InsufficientBalanceError } from "../../domain/errors";
 import { PrismaService } from "../database/prisma.service";
 
 @Injectable()
-export class RabbitMQConsumer implements OnModuleInit {
+export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQConsumer.name);
 
   constructor(
@@ -18,8 +18,36 @@ export class RabbitMQConsumer implements OnModuleInit {
     private readonly walletRepository: WalletRepository,
   ) {}
 
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
   async onModuleInit(): Promise<void> {
     setTimeout(() => this.startConsuming(), 2000);
+    this.scheduleProcessedEventCleanup();
+  }
+
+  onModuleDestroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+  }
+
+  private scheduleProcessedEventCleanup(): void {
+    const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+    const RETENTION_DAYS = 7;
+
+    this.cleanupInterval = setInterval(async () => {
+      try {
+        const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+        const result = await this.prisma.processedEvent.deleteMany({
+          where: { processedAt: { lt: cutoff } },
+        });
+        if (result.count > 0) {
+          this.logger.log(`Cleaned up ${result.count} processed events older than ${RETENTION_DAYS} days`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to cleanup processed events: ${error}`);
+      }
+    }, CLEANUP_INTERVAL_MS);
   }
 
   private async startConsuming(): Promise<void> {
