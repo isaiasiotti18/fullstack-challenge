@@ -7,6 +7,8 @@ import type {
   VerifyRoundResponse,
   PlayerBetsResponse,
   WalletResponse,
+  LeaderboardEntry,
+  LeaderboardPeriod,
 } from "@/types/api";
 
 const API_BASE_URL = "/api";
@@ -75,4 +77,8 @@ export function getPlayerBets(page = 1, limit = 20): Promise<PlayerBetsResponse>
 
 export function verifyRound(roundId: string): Promise<VerifyRoundResponse> {
   return apiFetch<VerifyRoundResponse>(`/games/rounds/${roundId}/verify`);
+}
+
+export function getLeaderboard(period: LeaderboardPeriod = "24h"): Promise<LeaderboardEntry[]> {
+  return apiFetch<LeaderboardEntry[]>(`/games/leaderboard?period=${period}`);
 }
