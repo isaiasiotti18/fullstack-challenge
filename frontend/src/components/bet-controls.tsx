@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { useGameStore } from "@/stores/game-store";
+import { useWallet } from "@/hooks/use-wallet";
 import { usePlaceBet } from "@/hooks/use-place-bet";
 import { useCashOut } from "@/hooks/use-cash-out";
 import { formatCents } from "@/services/format";
@@ -21,18 +22,25 @@ export function BetControls() {
   const bets = useGameStore((s) => s.bets);
   const multiplier = useGameStore((s) => s.multiplier);
 
+  const wallet = useWallet();
   const placeBet = usePlaceBet();
   const cashOutMutation = useCashOut();
 
+  const balanceCents = wallet.data?.balanceCents ?? 0;
   const amount = parseFloat(amountStr) || 0;
   const amountCents = Math.round(amount * 100);
   const hasBet = playerId ? bets.some((b) => b.playerId === playerId) : false;
   const playerBet = playerId ? bets.find((b) => b.playerId === playerId) : undefined;
   const canBet =
-    phase === "BETTING" && !hasBet && amount >= MIN_BET_REAIS && amount <= MAX_BET_REAIS;
+    phase === "BETTING" && !hasBet && amount >= MIN_BET_REAIS && amount <= MAX_BET_REAIS && amountCents <= balanceCents;
   const canCashOut = phase === "RUNNING" && playerBet?.status === "PENDING";
 
   function handlePlaceBet() {
+    if (amountCents > balanceCents) {
+      toast.error(`Saldo insuficiente. Disponível: ${formatCents(balanceCents)}`);
+      return;
+    }
+
     placeBet.mutate(
       { amountCents },
       {
@@ -96,7 +104,7 @@ export function BetControls() {
               variant="outline"
               size="sm"
               className="flex-1"
-              onClick={() => setAmountStr(MAX_BET_REAIS.toString())}
+              onClick={() => setAmountStr(Math.min(MAX_BET_REAIS, balanceCents / 100).toFixed(2))}
               disabled={phase !== "BETTING" || hasBet}
             >
               MAX
