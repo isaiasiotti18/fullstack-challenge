@@ -5,7 +5,7 @@ import type { ServerToClientEvents } from "@/types/socket";
 import { useGameStore } from "@/stores/game-store";
 import { getCurrentRound } from "@/services/api";
 
-const SOCKET_URL = "http://localhost:8000";
+const SOCKET_URL = "/";
 
 let socket: Socket<ServerToClientEvents> | null = null;
 let queryClientRef: QueryClient | null = null;

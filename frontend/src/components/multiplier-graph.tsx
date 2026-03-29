@@ -64,7 +64,10 @@ export function MultiplierGraph() {
       } else if (state.phase === "BETTING") {
         drawBettingPhase(ctx!, w, h, state.bettingEndsAt, state.hash);
       } else if (state.phase === "RUNNING") {
-        curvePointsRef.current.push(state.multiplier);
+        const lastPoint = curvePointsRef.current[curvePointsRef.current.length - 1];
+        if (lastPoint !== state.multiplier) {
+          curvePointsRef.current.push(state.multiplier);
+        }
         drawCurve(ctx!, w, h, curvePointsRef.current);
         drawMultiplierText(ctx!, w, h, state.multiplier, COLORS.curve);
       } else if (state.phase === "CRASHED") {
