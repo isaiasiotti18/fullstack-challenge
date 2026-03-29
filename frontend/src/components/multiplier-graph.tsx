@@ -4,21 +4,19 @@ import { useGameStore } from "@/stores/game-store";
 const COLORS = {
   bg: "#0f0f23",
   curve: "#00ff88",
+  curveFill: "rgba(0, 255, 136, 0.12)",
   crash: "#ff4444",
   text: "#e0e0e0",
   textMuted: "#8888aa",
   grid: "#1a1a3e",
+  axis: "#555577",
 };
 
-interface CurvePoint {
-  m: number; // multiplier
-  t: number; // timestamp (ms relative to round start)
-}
+const PADDING = { top: 30, right: 30, bottom: 40, left: 55 };
 
 export function MultiplierGraph() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
-  const curvePointsRef = useRef<CurvePoint[]>([]);
   const roundStartRef = useRef(0);
   const crashFlashRef = useRef(0);
 
@@ -52,7 +50,6 @@ export function MultiplierGraph() {
       const h = canvas!.clientHeight;
 
       if (state.phase === "RUNNING" && prevPhase !== "RUNNING") {
-        curvePointsRef.current = [];
         roundStartRef.current = Date.now();
       }
       if (state.phase === "CRASHED" && prevPhase !== "CRASHED") {
@@ -64,31 +61,44 @@ export function MultiplierGraph() {
       ctx!.fillStyle = COLORS.bg;
       ctx!.fillRect(0, 0, w, h);
 
-      drawGrid(ctx!, w, h);
-
       if (state.phase === "WAITING") {
+        drawGrid(ctx!, w, h, 1, 5);
+        drawAxes(ctx!, w, h, 1, 5);
         drawCenteredText(ctx!, w, h / 2, "Aguardando...", COLORS.textMuted, 28);
       } else if (state.phase === "BETTING") {
+        drawGrid(ctx!, w, h, 1, 5);
+        drawAxes(ctx!, w, h, 1, 5);
         drawBettingPhase(ctx!, w, h, state.bettingEndsAt, state.hash);
       } else if (state.phase === "RUNNING") {
-        const points = curvePointsRef.current;
-        const last = points[points.length - 1];
-        if (!last || last.m !== state.multiplier) {
-          points.push({ m: state.multiplier, t: Date.now() - roundStartRef.current });
-        }
-        drawCurve(ctx!, w, h, points);
+        const elapsed = (Date.now() - roundStartRef.current) / 1000;
+        const maxTime = Math.max(elapsed, 5);
+        const maxMult = Math.max(state.multiplier * 1.3, 2);
+
+        drawGrid(ctx!, w, h, maxMult, maxTime);
+        drawAxes(ctx!, w, h, maxMult, maxTime);
+        drawExponentialCurve(ctx!, w, h, elapsed, state.multiplier, maxMult, maxTime, false);
         drawMultiplierText(ctx!, w, h, state.multiplier, COLORS.curve);
       } else if (state.phase === "CRASHED") {
-        drawCurve(ctx!, w, h, curvePointsRef.current);
+        const crashPoint = state.crashPoint ?? state.multiplier;
+        const elapsed = roundStartRef.current > 0
+          ? Math.log(crashPoint) / 0.06
+          : 10;
+        const maxTime = Math.max(elapsed, 5);
+        const maxMult = Math.max(crashPoint * 1.3, 2);
+
+        drawGrid(ctx!, w, h, maxMult, maxTime);
+        drawAxes(ctx!, w, h, maxMult, maxTime);
+        drawExponentialCurve(ctx!, w, h, elapsed, crashPoint, maxMult, maxTime, true);
+
         const flash = crashFlashRef.current;
-        const alpha = 0.15 + flash * 0.35;
-        ctx!.fillStyle = `rgba(255, 68, 68, ${alpha})`;
-        ctx!.fillRect(0, 0, w, h);
-        drawMultiplierText(ctx!, w, h, state.crashPoint ?? state.multiplier, COLORS.crash);
-        drawCenteredText(ctx!, w, h * 0.7, "CRASHED", COLORS.crash, 20);
-        if (crashFlashRef.current > 0) {
-          crashFlashRef.current = Math.max(0, crashFlashRef.current - 0.03);
+        if (flash > 0) {
+          ctx!.fillStyle = `rgba(255, 68, 68, ${flash * 0.3})`;
+          ctx!.fillRect(0, 0, w, h);
+          crashFlashRef.current = Math.max(0, crashFlashRef.current - 0.025);
         }
+
+        drawMultiplierText(ctx!, w, h, crashPoint, COLORS.crash);
+        drawCenteredText(ctx!, w, h * 0.65, "CRASHED", COLORS.crash, 22);
       }
 
       animFrameRef.current = requestAnimationFrame(draw);
@@ -109,95 +119,162 @@ export function MultiplierGraph() {
   );
 }
 
-function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number) {
+function scaleY(multiplier: number, maxMult: number): number {
+  // Square root scale: gives more space to lower multipliers,
+  // making the exponential curve visually dramatic
+  return Math.sqrt(multiplier - 1) / Math.sqrt(maxMult - 1);
+}
+
+function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, maxMult: number, maxTime: number) {
+  const graphW = w - PADDING.left - PADDING.right;
+  const graphH = h - PADDING.top - PADDING.bottom;
+
   ctx.strokeStyle = COLORS.grid;
-  ctx.lineWidth = 1;
-  const step = 60;
-  for (let x = step; x < w; x += step) {
+  ctx.lineWidth = 0.5;
+
+  // Horizontal grid lines (multiplier values)
+  const multSteps = getMultiplierSteps(maxMult);
+  for (const m of multSteps) {
+    const ratio = scaleY(m, maxMult);
+    const y = h - PADDING.bottom - ratio * graphH;
+    if (y < PADDING.top) continue;
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
+    ctx.moveTo(PADDING.left, y);
+    ctx.lineTo(w - PADDING.right, y);
     ctx.stroke();
   }
-  for (let y = step; y < h; y += step) {
+
+  // Vertical grid lines (time values)
+  const timeStep = getTimeStep(maxTime);
+  for (let t = timeStep; t <= maxTime; t += timeStep) {
+    const x = PADDING.left + (t / maxTime) * graphW;
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
+    ctx.moveTo(x, PADDING.top);
+    ctx.lineTo(x, h - PADDING.bottom);
     ctx.stroke();
   }
 }
 
-function drawCurve(ctx: CanvasRenderingContext2D, w: number, h: number, points: CurvePoint[]) {
-  if (points.length < 2) return;
+function drawAxes(ctx: CanvasRenderingContext2D, w: number, h: number, maxMult: number, maxTime: number) {
+  const graphW = w - PADDING.left - PADDING.right;
+  const graphH = h - PADDING.top - PADDING.bottom;
 
-  const padding = 40;
-  const graphW = w - padding * 2;
-  const graphH = h - padding * 2;
+  ctx.fillStyle = COLORS.axis;
+  ctx.font = "11px system-ui, sans-serif";
 
-  const maxTime = Math.max(points[points.length - 1].t, 5000);
-  const maxMultiplier = Math.max(points[points.length - 1].m, 2);
-
-  // Convert to screen coordinates
-  const coords = points.map((p) => ({
-    x: padding + (p.t / maxTime) * graphW,
-    y: h - padding - ((p.m - 1) / (maxMultiplier - 1)) * graphH,
-  }));
-
-  // Draw smooth curve using quadratic Bezier
-  ctx.beginPath();
-  ctx.moveTo(coords[0].x, coords[0].y);
-
-  for (let i = 1; i < coords.length; i++) {
-    const midX = (coords[i - 1].x + coords[i].x) / 2;
-    const midY = (coords[i - 1].y + coords[i].y) / 2;
-    ctx.quadraticCurveTo(coords[i - 1].x, coords[i - 1].y, midX, midY);
+  // Y axis labels (multiplier)
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  const multSteps = getMultiplierSteps(maxMult);
+  for (const m of multSteps) {
+    const ratio = scaleY(m, maxMult);
+    const y = h - PADDING.bottom - ratio * graphH;
+    if (y < PADDING.top + 10) continue;
+    ctx.fillText(`${m.toFixed(1)}x`, PADDING.left - 8, y);
   }
-  ctx.lineTo(coords[coords.length - 1].x, coords[coords.length - 1].y);
 
-  // Gradient fill under the curve
-  const lastCoord = coords[coords.length - 1];
-  const gradient = ctx.createLinearGradient(0, lastCoord.y, 0, h - padding);
-  gradient.addColorStop(0, "rgba(0, 255, 136, 0.15)");
-  gradient.addColorStop(1, "rgba(0, 255, 136, 0)");
+  // X axis labels (time in seconds)
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  const timeStep = getTimeStep(maxTime);
+  for (let t = 0; t <= maxTime; t += timeStep) {
+    const x = PADDING.left + (t / maxTime) * graphW;
+    ctx.fillText(`${Math.round(t)}s`, x, h - PADDING.bottom + 8);
+  }
 
-  ctx.save();
-  ctx.lineTo(lastCoord.x, h - padding);
-  ctx.lineTo(coords[0].x, h - padding);
+  // Baseline (1.00x line)
+  ctx.strokeStyle = COLORS.axis;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  const baseY = h - PADDING.bottom;
+  ctx.beginPath();
+  ctx.moveTo(PADDING.left, baseY);
+  ctx.lineTo(w - PADDING.right, baseY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawExponentialCurve(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  elapsedSec: number,
+  currentMult: number,
+  maxMult: number,
+  maxTime: number,
+  isCrashed: boolean,
+) {
+  const graphW = w - PADDING.left - PADDING.right;
+  const graphH = h - PADDING.top - PADDING.bottom;
+  const growthRate = 0.06;
+  const steps = Math.min(Math.max(Math.floor(graphW / 2), 100), 400);
+
+  // Build curve path using the exponential formula directly
+  const path: { x: number; y: number }[] = [];
+
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * elapsedSec;
+    const mult = Math.floor(Math.exp(growthRate * t) * 100) / 100;
+    const clampedMult = Math.min(mult, currentMult);
+
+    const xRatio = t / maxTime;
+    const yRatio = scaleY(clampedMult, maxMult);
+
+    path.push({
+      x: PADDING.left + xRatio * graphW,
+      y: h - PADDING.bottom - yRatio * graphH,
+    });
+  }
+
+  if (path.length < 2) return;
+
+  // Draw filled area under curve
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+  for (let i = 1; i < path.length; i++) {
+    ctx.lineTo(path[i].x, path[i].y);
+  }
+  const lastPt = path[path.length - 1];
+  ctx.lineTo(lastPt.x, h - PADDING.bottom);
+  ctx.lineTo(path[0].x, h - PADDING.bottom);
   ctx.closePath();
+
+  const gradient = ctx.createLinearGradient(0, lastPt.y, 0, h - PADDING.bottom);
+  const fillColor = isCrashed ? "rgba(255, 68, 68," : "rgba(0, 255, 136,";
+  gradient.addColorStop(0, `${fillColor} 0.2)`);
+  gradient.addColorStop(1, `${fillColor} 0.02)`);
   ctx.fillStyle = gradient;
   ctx.fill();
-  ctx.restore();
 
-  // Redraw curve stroke on top of fill
+  // Draw curve stroke
   ctx.beginPath();
-  ctx.moveTo(coords[0].x, coords[0].y);
-  for (let i = 1; i < coords.length; i++) {
-    const midX = (coords[i - 1].x + coords[i].x) / 2;
-    const midY = (coords[i - 1].y + coords[i].y) / 2;
-    ctx.quadraticCurveTo(coords[i - 1].x, coords[i - 1].y, midX, midY);
+  ctx.moveTo(path[0].x, path[0].y);
+  for (let i = 1; i < path.length; i++) {
+    ctx.lineTo(path[i].x, path[i].y);
   }
-  ctx.lineTo(lastCoord.x, lastCoord.y);
 
-  ctx.strokeStyle = COLORS.curve;
+  ctx.strokeStyle = isCrashed ? COLORS.crash : COLORS.curve;
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // Glow effect
-  ctx.shadowColor = COLORS.curve;
-  ctx.shadowBlur = 10;
+  // Glow
+  ctx.shadowColor = isCrashed ? COLORS.crash : COLORS.curve;
+  ctx.shadowBlur = 8;
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Dot at the tip
-  ctx.beginPath();
-  ctx.arc(lastCoord.x, lastCoord.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = COLORS.curve;
-  ctx.shadowColor = COLORS.curve;
-  ctx.shadowBlur = 12;
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  // Glowing dot at tip
+  if (!isCrashed) {
+    ctx.beginPath();
+    ctx.arc(lastPt.x, lastPt.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.curve;
+    ctx.shadowColor = COLORS.curve;
+    ctx.shadowBlur = 15;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
 }
 
 function drawMultiplierText(
@@ -264,4 +341,25 @@ function drawBettingPhase(
     const truncated = hash.length > 16 ? `${hash.slice(0, 16)}...` : hash;
     drawCenteredText(ctx, w, h * 0.7, `Hash: ${truncated}`, COLORS.textMuted, 14);
   }
+}
+
+function getMultiplierSteps(maxMult: number): number[] {
+  const steps: number[] = [];
+  if (maxMult <= 3) {
+    for (let m = 1.5; m <= maxMult; m += 0.5) steps.push(m);
+  } else if (maxMult <= 10) {
+    for (let m = 2; m <= maxMult; m += 1) steps.push(m);
+  } else if (maxMult <= 50) {
+    for (let m = 5; m <= maxMult; m += 5) steps.push(m);
+  } else {
+    for (let m = 10; m <= maxMult; m += 10) steps.push(m);
+  }
+  return steps;
+}
+
+function getTimeStep(maxTime: number): number {
+  if (maxTime <= 10) return 2;
+  if (maxTime <= 30) return 5;
+  if (maxTime <= 60) return 10;
+  return 30;
 }
