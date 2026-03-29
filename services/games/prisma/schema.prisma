@@ -30,6 +30,7 @@ model Round {
   createdAt  DateTime    @default(now()) @map("created_at")
   bets       Bet[]
 
+  @@index([status])
   @@map("rounds")
 }
 
@@ -45,7 +46,7 @@ model Bet {
   round               Round     @relation(fields: [roundId], references: [id])
 
   @@unique([roundId, playerId])
-  @@index([playerId])
+  @@index([playerId, createdAt])
   @@index([roundId])
   @@map("bets")
 }
