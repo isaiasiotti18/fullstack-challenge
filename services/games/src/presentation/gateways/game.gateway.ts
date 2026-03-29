@@ -61,7 +61,7 @@ export class GameGateway
     this.server.emit("round:crash", data);
   }
 
-  emitBetPlaced(data: { playerId: string; amountCents: number }): void {
+  emitBetPlaced(data: { playerId: string; username: string; amountCents: number }): void {
     this.server.emit("bet:placed", data);
   }
 

@@ -23,6 +23,7 @@ export interface CrashEvent {
 
 export interface BetPlacedEvent {
   playerId: string;
+  username: string;
   amountCents: number;
 }
 

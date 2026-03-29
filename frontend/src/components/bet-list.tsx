@@ -1,5 +1,5 @@
 import { useGameStore } from "@/stores/game-store";
-import { formatCents, truncatePlayerId } from "@/services/format";
+import { formatCents } from "@/services/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function BetList() {
@@ -22,7 +22,7 @@ export function BetList() {
                 className="flex items-center justify-between rounded px-2 py-1.5 text-sm"
               >
                 <span className="font-mono text-text-secondary">
-                  {truncatePlayerId(bet.playerId)}
+                  {bet.username}
                 </span>
                 <span className="font-mono">{formatCents(bet.amountCents)}</span>
                 <BetStatus

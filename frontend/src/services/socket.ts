@@ -72,7 +72,7 @@ export function connectSocket(): void {
 
       if (round.bets?.length) {
         for (const bet of round.bets) {
-          store.addBet({ playerId: bet.playerId, amountCents: bet.amountCents });
+          store.addBet({ playerId: bet.playerId, username: bet.playerId.slice(0, 8), amountCents: bet.amountCents });
           if (bet.status === "CASHED_OUT" && bet.multiplierAtCashout && bet.payoutCents) {
             store.addCashOut({
               playerId: bet.playerId,

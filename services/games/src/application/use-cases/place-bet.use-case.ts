@@ -18,6 +18,7 @@ export class PlaceBetUseCase {
   async execute(
     playerId: string,
     amountCents: number,
+    username?: string,
   ): Promise<{
     roundId: string;
     playerId: string;
@@ -43,6 +44,7 @@ export class PlaceBetUseCase {
 
     this.eventEmitter.emitBetPlaced({
       playerId: bet.playerId,
+      username: username ?? bet.playerId,
       amountCents: bet.amountCents,
     });
 

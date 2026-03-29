@@ -12,7 +12,7 @@ export interface GameEventEmitter {
     publicSeed: string;
   }): void;
 
-  emitBetPlaced(data: { playerId: string; amountCents: number }): void;
+  emitBetPlaced(data: { playerId: string; username: string; amountCents: number }): void;
 
   emitBetCashedOut(data: { playerId: string; multiplier: number; payoutCents: number }): void;
 
