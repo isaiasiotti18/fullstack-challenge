@@ -9,6 +9,9 @@ node_modules/
 dist/
 tsconfig.tsbuildinfo
 
+# Prisma generated client
+prisma/generated/
+
 # Bun
 bun.lockb
 

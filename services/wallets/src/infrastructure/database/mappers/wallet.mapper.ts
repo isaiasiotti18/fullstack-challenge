@@ -1,4 +1,4 @@
-import { Wallet as PrismaWallet } from "../../../generated/prisma/client.js";
+import { Wallet as PrismaWallet } from "../../../../prisma/generated/client.js";
 import { Wallet } from "../../../domain/wallet";
 
 export class WalletMapper {
