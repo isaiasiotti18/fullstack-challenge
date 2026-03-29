@@ -42,7 +42,9 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
           where: { processedAt: { lt: cutoff } },
         });
         if (result.count > 0) {
-          this.logger.log(`Cleaned up ${result.count} processed events older than ${RETENTION_DAYS} days`);
+          this.logger.log(
+            `Cleaned up ${result.count} processed events older than ${RETENTION_DAYS} days`,
+          );
         }
       } catch (error) {
         this.logger.error(`Failed to cleanup processed events: ${error}`);
@@ -85,11 +87,22 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
       `Handling bet.placed: player ${msg.playerId}, round ${msg.roundId}, amount ${msg.amountCents} cents`,
     );
 
+    // Inbox: record event on arrival
+    await this.prisma.inboxEvent.create({
+      data: {
+        eventId: msg.eventId,
+        routingKey: "bet.placed",
+        payload: msg as object,
+        status: "RECEIVED",
+      },
+    });
+
     const alreadyProcessed = await this.prisma.processedEvent.findUnique({
       where: { eventId: msg.eventId },
     });
     if (alreadyProcessed) {
       this.logger.warn(`Skipping duplicate bet.placed event ${msg.eventId}`);
+      await this.markInbox(msg.eventId, "DUPLICATE");
       return;
     }
 
@@ -98,6 +111,7 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
 
       if (!wallet) {
         this.logger.warn(`Wallet not found for player ${msg.playerId}`);
+        await this.markInbox(msg.eventId, "FAILED", "Wallet not found");
         await this.rabbitMQPublisher.publishWalletDebitFailed({
           eventId: crypto.randomUUID(),
           roundId: msg.roundId,
@@ -119,6 +133,10 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
         this.prisma.processedEvent.create({
           data: { eventId: msg.eventId, routingKey: "bet.placed" },
         }),
+        this.prisma.inboxEvent.updateMany({
+          where: { eventId: msg.eventId },
+          data: { status: "PROCESSED", processedAt: new Date() },
+        }),
       ]);
 
       this.logger.log(
@@ -135,6 +153,7 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       if (error instanceof InsufficientBalanceError) {
         this.logger.warn(`Insufficient balance for player ${msg.playerId}: ${error.message}`);
+        await this.markInbox(msg.eventId, "FAILED", error.message);
         await this.rabbitMQPublisher.publishWalletDebitFailed({
           eventId: crypto.randomUUID(),
           roundId: msg.roundId,
@@ -146,6 +165,11 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
+      await this.markInbox(
+        msg.eventId,
+        "FAILED",
+        error instanceof Error ? error.message : String(error),
+      );
       this.logger.error(
         `Unexpected error handling bet.placed for player ${msg.playerId}: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -157,6 +181,16 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       `Handling round.ended: round ${msg.roundId}, crash point ${msg.crashPoint}, ${msg.payouts.length} payouts`,
     );
+
+    // Inbox: record event on arrival
+    await this.prisma.inboxEvent.create({
+      data: {
+        eventId: msg.eventId,
+        routingKey: "round.ended",
+        payload: msg as object,
+        status: "RECEIVED",
+      },
+    });
 
     for (const payout of msg.payouts) {
       const payoutEventId = `${msg.eventId}:${payout.playerId}`;
@@ -203,6 +237,22 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    await this.markInbox(msg.eventId, "PROCESSED");
     this.logger.log(`Processed ${msg.payouts.length} payouts for round ${msg.roundId}`);
+  }
+
+  private async markInbox(eventId: string, status: string, error?: string): Promise<void> {
+    try {
+      await this.prisma.inboxEvent.updateMany({
+        where: { eventId },
+        data: {
+          status,
+          processedAt: new Date(),
+          ...(error ? { error } : {}),
+        },
+      });
+    } catch (err) {
+      this.logger.error(`Failed to update inbox for event ${eventId}: ${err}`);
+    }
   }
 }
