@@ -14,6 +14,7 @@ export function MultiplierGraph() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const curvePointsRef = useRef<number[]>([]);
+  const crashFlashRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -47,6 +48,9 @@ export function MultiplierGraph() {
       if (state.phase === "RUNNING" && prevPhase !== "RUNNING") {
         curvePointsRef.current = [];
       }
+      if (state.phase === "CRASHED" && prevPhase !== "CRASHED") {
+        crashFlashRef.current = 1;
+      }
       prevPhase = state.phase;
 
       ctx!.clearRect(0, 0, w, h);
@@ -65,10 +69,15 @@ export function MultiplierGraph() {
         drawMultiplierText(ctx!, w, h, state.multiplier, COLORS.curve);
       } else if (state.phase === "CRASHED") {
         drawCurve(ctx!, w, h, curvePointsRef.current);
-        ctx!.fillStyle = "rgba(255, 68, 68, 0.15)";
+        const flash = crashFlashRef.current;
+        const alpha = 0.15 + flash * 0.35;
+        ctx!.fillStyle = `rgba(255, 68, 68, ${alpha})`;
         ctx!.fillRect(0, 0, w, h);
         drawMultiplierText(ctx!, w, h, state.crashPoint ?? state.multiplier, COLORS.crash);
         drawCenteredText(ctx!, w, h * 0.7, "CRASHED", COLORS.crash, 20);
+        if (crashFlashRef.current > 0) {
+          crashFlashRef.current = Math.max(0, crashFlashRef.current - 0.03);
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(draw);
