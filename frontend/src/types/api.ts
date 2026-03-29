@@ -34,6 +34,8 @@ export interface CurrentRoundResponse {
   currentMultiplier: number;
   crashPoint: number | null;
   bets: RoundBet[];
+  bettingEndsAt?: string;
+  createdAt?: string;
 }
 
 export interface RoundHistoryItem {
