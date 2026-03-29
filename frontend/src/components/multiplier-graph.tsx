@@ -78,11 +78,10 @@ export function MultiplierGraph() {
         drawAxes(ctx!, w, h, maxMult, maxTime);
         drawExponentialCurve(ctx!, w, h, elapsed, state.multiplier, maxMult, maxTime, false);
         drawMultiplierText(ctx!, w, h, state.multiplier, COLORS.curve);
+        drawFormulaOverlay(ctx!, w, h, COLORS.curve);
       } else if (state.phase === "CRASHED") {
         const crashPoint = state.crashPoint ?? state.multiplier;
-        const elapsed = roundStartRef.current > 0
-          ? Math.log(crashPoint) / 0.06
-          : 10;
+        const elapsed = roundStartRef.current > 0 ? Math.log(crashPoint) / 0.06 : 10;
         const maxTime = Math.max(elapsed, 5);
         const maxMult = Math.max(crashPoint * 1.3, 2);
 
@@ -99,6 +98,7 @@ export function MultiplierGraph() {
 
         drawMultiplierText(ctx!, w, h, crashPoint, COLORS.crash);
         drawCenteredText(ctx!, w, h * 0.65, "CRASHED", COLORS.crash, 22);
+        drawFormulaOverlay(ctx!, w, h, COLORS.crash);
       }
 
       animFrameRef.current = requestAnimationFrame(draw);
@@ -125,7 +125,13 @@ function scaleY(multiplier: number, maxMult: number): number {
   return Math.sqrt(multiplier - 1) / Math.sqrt(maxMult - 1);
 }
 
-function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, maxMult: number, maxTime: number) {
+function drawGrid(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  maxMult: number,
+  maxTime: number,
+) {
   const graphW = w - PADDING.left - PADDING.right;
   const graphH = h - PADDING.top - PADDING.bottom;
 
@@ -155,7 +161,13 @@ function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, maxMult: 
   }
 }
 
-function drawAxes(ctx: CanvasRenderingContext2D, w: number, h: number, maxMult: number, maxTime: number) {
+function drawAxes(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  maxMult: number,
+  maxTime: number,
+) {
   const graphW = w - PADDING.left - PADDING.right;
   const graphH = h - PADDING.top - PADDING.bottom;
 
@@ -341,6 +353,27 @@ function drawBettingPhase(
     const truncated = hash.length > 16 ? `${hash.slice(0, 16)}...` : hash;
     drawCenteredText(ctx, w, h * 0.7, `Hash: ${truncated}`, COLORS.textMuted, 14);
   }
+}
+
+function drawFormulaOverlay(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  accentColor: string,
+) {
+  const GROWTH_RATE = 0.06;
+  const formula = `f(t) = e^(${GROWTH_RATE}t)`;
+  const x = w - PADDING.right - 8;
+  const y = h - PADDING.bottom - 12;
+
+  ctx.save();
+  ctx.font = "italic 12px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillStyle = accentColor;
+  ctx.globalAlpha = 0.5;
+  ctx.fillText(formula, x, y);
+  ctx.restore();
 }
 
 function getMultiplierSteps(maxMult: number): number[] {
