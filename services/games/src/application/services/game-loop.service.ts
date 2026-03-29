@@ -58,7 +58,7 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
       let crashPoint = calculateCrashPoint(this.serverSeed, this.publicSeed, this.nonce);
 
       const testPoints = process.env.TEST_CRASH_POINTS;
-      if (testPoints) {
+      if (testPoints && process.env.NODE_ENV !== "production") {
         const points = testPoints.split(",").map(Number).filter((n) => n >= 1);
         if (points.length > 0) {
           crashPoint = points[(this.nonce - 1) % points.length];
