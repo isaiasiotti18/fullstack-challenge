@@ -1,8 +1,25 @@
 _format_version: "3.0"
 
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 1800
+      second: 30
+      policy: local
+      fault_tolerant: true
+      hide_client_headers: false
+
 services:
   - name: games-service
     url: http://games:4001
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 600
+          second: 10
+          policy: local
+          fault_tolerant: true
+          hide_client_headers: false
     routes:
       - name: games-routes
         paths:
