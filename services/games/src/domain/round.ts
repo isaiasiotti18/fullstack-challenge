@@ -62,7 +62,7 @@ export class Round {
     return events;
   }
 
-  placeBet(playerId: string, amountCents: number): Bet {
+  placeBet(playerId: string, amountCents: number, autoCashoutAt?: number | null): Bet {
     if (this._status !== RoundStatus.BETTING) {
       throw new InvalidRoundStateError(
         `Cannot place bet: round is ${this._status}, expected BETTING`,
@@ -72,7 +72,7 @@ export class Round {
       throw new DuplicateBetError(`Player ${playerId} already has a bet in this round`);
     }
 
-    const bet = new Bet(playerId, amountCents);
+    const bet = new Bet(playerId, amountCents, autoCashoutAt);
     this._bets.set(playerId, bet);
 
     this._domainEvents.push(new BetPlacedEvent(this.id, playerId, amountCents));

@@ -1,5 +1,6 @@
 export interface PlaceBetRequest {
   amountCents: number;
+  autoCashoutAt?: number;
 }
 
 export interface PlaceBetResponse {
@@ -7,6 +8,7 @@ export interface PlaceBetResponse {
   playerId: string;
   amountCents: number;
   status: string;
+  autoCashoutAt: number | null;
 }
 
 export interface CashOutResponse {
@@ -83,3 +85,13 @@ export interface WalletResponse {
   playerId: string;
   balanceCents: number;
 }
+
+export interface LeaderboardEntry {
+  playerId: string;
+  totalBets: number;
+  totalWageredCents: number;
+  totalPayoutCents: number;
+  netProfitCents: number;
+}
+
+export type LeaderboardPeriod = "24h" | "7d";

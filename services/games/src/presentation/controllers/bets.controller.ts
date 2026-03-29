@@ -42,7 +42,12 @@ export class BetController {
     @CurrentUser() user: AuthUser,
     @Body() dto: PlaceBetDto,
   ): Promise<PlaceBetResponseDto> {
-    return this.placeBetUseCase.execute(user.userId, dto.amountCents, user.username);
+    return this.placeBetUseCase.execute(
+      user.userId,
+      dto.amountCents,
+      user.username,
+      dto.autoCashoutAt,
+    );
   }
 
   @Post("cashout")

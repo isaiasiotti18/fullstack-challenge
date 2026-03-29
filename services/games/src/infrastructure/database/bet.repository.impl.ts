@@ -13,6 +13,7 @@ export class PrismaBetRepository implements BetRepository {
         roundId,
         playerId: bet.playerId,
         amountCents: BigInt(bet.amountCents),
+        autoCashoutAt: bet.autoCashoutAt,
         status: bet.status,
       },
     });

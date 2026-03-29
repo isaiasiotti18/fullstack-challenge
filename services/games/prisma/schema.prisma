@@ -40,6 +40,7 @@ model Bet {
   playerId            String    @map("player_id")
   amountCents         BigInt    @map("amount_cents")
   multiplierAtCashout Float?    @map("multiplier_at_cashout")
+  autoCashoutAt       Float?    @map("auto_cashout_at")
   status              BetStatus
   payoutCents         BigInt?   @map("payout_cents")
   createdAt           DateTime  @default(now()) @map("created_at")
@@ -49,4 +50,17 @@ model Bet {
   @@index([playerId, createdAt])
   @@index([roundId])
   @@map("bets")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid())
+  aggregateId String    @map("aggregate_id")
+  eventType   String    @map("event_type")
+  routingKey  String    @map("routing_key")
+  payload     Json
+  createdAt   DateTime  @default(now()) @map("created_at")
+  publishedAt DateTime? @map("published_at")
+
+  @@index([publishedAt])
+  @@map("outbox_events")
 }

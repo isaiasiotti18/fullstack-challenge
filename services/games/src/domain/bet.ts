@@ -12,11 +12,12 @@ export class Bet {
 
   readonly playerId: string;
   readonly amountCents: number;
+  readonly autoCashoutAt: number | null;
   private _status: BetStatus;
   private _cashOutMultiplier: number | null;
   private _payoutCents: number | null;
 
-  constructor(playerId: string, amountCents: number) {
+  constructor(playerId: string, amountCents: number, autoCashoutAt?: number | null) {
     if (!Number.isInteger(amountCents)) {
       throw new InvalidBetAmountError(`Bet amount must be an integer, got ${amountCents}`);
     }
@@ -33,8 +34,15 @@ export class Bet {
       );
     }
 
+    if (autoCashoutAt != null && autoCashoutAt < 1.01) {
+      throw new InvalidBetAmountError(
+        `Auto cashout multiplier must be >= 1.01, got ${autoCashoutAt}`,
+      );
+    }
+
     this.playerId = playerId;
     this.amountCents = amountCents;
+    this.autoCashoutAt = autoCashoutAt ?? null;
     this._status = BetStatus.PENDING;
     this._cashOutMultiplier = null;
     this._payoutCents = null;

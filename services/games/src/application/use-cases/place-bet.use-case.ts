@@ -19,18 +19,20 @@ export class PlaceBetUseCase {
     playerId: string,
     amountCents: number,
     username?: string,
+    autoCashoutAt?: number | null,
   ): Promise<{
     roundId: string;
     playerId: string;
     amountCents: number;
     status: string;
+    autoCashoutAt: number | null;
   }> {
     const round = this.gameLoop.getCurrentRound();
     if (!round) {
       throw new InvalidRoundStateError("No active round available for betting");
     }
 
-    const bet = round.placeBet(playerId, amountCents);
+    const bet = round.placeBet(playerId, amountCents, autoCashoutAt);
 
     await this.betRepo.save(bet, round.id);
 
@@ -53,6 +55,7 @@ export class PlaceBetUseCase {
       playerId: bet.playerId,
       amountCents: bet.amountCents,
       status: bet.status,
+      autoCashoutAt: bet.autoCashoutAt,
     };
   }
 }

@@ -12,6 +12,9 @@ export class PlaceBetResponseDto {
 
   @ApiProperty({ description: "Bet status", example: "PENDING" })
   status: string;
+
+  @ApiPropertyOptional({ description: "Auto cashout multiplier target", example: 2.0 })
+  autoCashoutAt: number | null;
 }
 
 export class CashOutResponseDto {

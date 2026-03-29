@@ -15,6 +15,7 @@ const MAX_BET_REAIS = 1000;
 
 export function BetControls() {
   const [amountStr, setAmountStr] = useState("10");
+  const [autoCashoutStr, setAutoCashoutStr] = useState("");
   const auth = useAuth();
   const playerId = auth.user?.profile?.sub;
 
@@ -35,11 +36,18 @@ export function BetControls() {
     phase === "BETTING" && !hasBet && amount >= MIN_BET_REAIS && amount <= MAX_BET_REAIS;
   const canCashOut = phase === "RUNNING" && playerBet?.status === "PENDING";
 
+  const autoCashoutAt = parseFloat(autoCashoutStr) || undefined;
+
   function handlePlaceBet() {
     placeBet.mutate(
-      { amountCents },
+      { amountCents, autoCashoutAt },
       {
-        onSuccess: () => toast.success(`Aposta de ${formatCents(amountCents)} enviada`),
+        onSuccess: () => {
+          const msg = autoCashoutAt
+            ? `Aposta de ${formatCents(amountCents)} enviada (auto cashout @ ${autoCashoutAt}x)`
+            : `Aposta de ${formatCents(amountCents)} enviada`;
+          toast.success(msg);
+        },
         onError: (err) => toast.error(err.message),
       },
     );
@@ -105,6 +113,20 @@ export function BetControls() {
               MAX
             </Button>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm text-text-secondary">Auto Cashout (x)</label>
+          <Input
+            type="number"
+            min={1.01}
+            step="0.1"
+            placeholder="Ex: 2.00"
+            value={autoCashoutStr}
+            onChange={(e) => setAutoCashoutStr(e.target.value)}
+            disabled={phase !== "BETTING" || hasBet}
+            className="border-border-game bg-bg-secondary font-mono"
+          />
         </div>
 
         {canCashOut ? (

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Round, RoundStatus } from "../../domain/round";
+import { BetStatus } from "../../domain/bet";
 import { calculateCrashPoint, hashServerSeed } from "../../domain/provably-fair";
 import { calculateMultiplier } from "../../domain/multiplier";
 import type { RoundRepository } from "../ports/round.repository";
@@ -59,7 +60,10 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
 
       const testPoints = process.env.TEST_CRASH_POINTS;
       if (testPoints && process.env.NODE_ENV !== "production") {
-        const points = testPoints.split(",").map(Number).filter((n) => n >= 1);
+        const points = testPoints
+          .split(",")
+          .map(Number)
+          .filter((n) => n >= 1);
         if (points.length > 0) {
           crashPoint = points[(this.nonce - 1) % points.length];
         }
@@ -126,6 +130,7 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
         this.currentMultiplier = this.currentRound.crashPoint;
         await this.crashRound();
       } else {
+        await this.processAutoCashouts();
         this.eventEmitter.emitTick({ multiplier: this.currentMultiplier });
       }
     } catch (error) {
@@ -175,6 +180,43 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
       setTimeout(() => this.startNewRound(), this.COOLDOWN_MS);
     } catch (error) {
       this.logger.error(`Failed to crash round: ${error}`);
+    }
+  }
+
+  private async processAutoCashouts(): Promise<void> {
+    if (!this.currentRound) return;
+
+    for (const [playerId, bet] of this.currentRound.bets) {
+      if (
+        bet.status === BetStatus.PENDING &&
+        bet.autoCashoutAt !== null &&
+        this.currentMultiplier >= bet.autoCashoutAt
+      ) {
+        try {
+          const cashedBet = this.currentRound.cashOut(playerId, this.currentMultiplier);
+
+          if (cashedBet.cashOutMultiplier != null && cashedBet.payoutCents != null) {
+            await this.betRepo.updateCashOut(
+              this.currentRound.id,
+              playerId,
+              cashedBet.cashOutMultiplier,
+              cashedBet.payoutCents,
+            );
+
+            this.eventEmitter.emitBetCashedOut({
+              playerId,
+              multiplier: cashedBet.cashOutMultiplier,
+              payoutCents: cashedBet.payoutCents,
+            });
+
+            this.logger.log(
+              `Auto cashout for ${playerId} at ${cashedBet.cashOutMultiplier}x (target: ${bet.autoCashoutAt}x)`,
+            );
+          }
+        } catch (error) {
+          this.logger.warn(`Auto cashout failed for ${playerId}: ${error}`);
+        }
+      }
     }
   }
 
