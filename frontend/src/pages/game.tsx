@@ -1,5 +1,6 @@
 import { useGameSocket } from "@/hooks/use-game-socket";
 import { useAutoBet } from "@/hooks/use-auto-bet";
+import { useGameSounds } from "@/hooks/use-game-sounds";
 import { useGameStore } from "@/stores/game-store";
 import { MultiplierGraph } from "@/components/multiplier-graph";
 import { BetControls } from "@/components/bet-controls";
@@ -11,6 +12,7 @@ import { RoundHistory } from "@/components/round-history";
 export function GamePage() {
   useGameSocket();
   useAutoBet();
+  useGameSounds();
 
   const phase = useGameStore((s) => s.phase);
   const multiplier = useGameStore((s) => s.multiplier);

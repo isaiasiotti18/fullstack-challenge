@@ -1,6 +1,7 @@
 import { useAuth } from "react-oidc-context";
 import { useWallet } from "@/hooks/use-wallet";
 import { useCreateWallet } from "@/hooks/use-create-wallet";
+import { useSoundStore } from "@/hooks/use-sound";
 import { formatCents } from "@/services/format";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +13,7 @@ export function Header() {
   const createWallet = useCreateWallet();
 
   const username = auth.user?.profile?.preferred_username ?? "Jogador";
+  const { muted, toggleMute } = useSoundStore();
 
   useEffect(() => {
     if (wallet.isError && !createWallet.isPending) {
@@ -24,8 +26,19 @@ export function Header() {
       <h1 className="text-lg font-bold text-neon">Crash Game</h1>
 
       <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleMute}
+          className="text-lg"
+          title={muted ? "Ativar som" : "Silenciar"}
+        >
+          {muted ? "\u{1F507}" : "\u{1F50A}"}
+        </Button>
         <div className="text-right">
-          <p className="text-sm text-text-secondary" data-testid="username">{username}</p>
+          <p className="text-sm text-text-secondary" data-testid="username">
+            {username}
+          </p>
           {wallet.isLoading ? (
             <Skeleton className="h-5 w-20" />
           ) : (
@@ -35,7 +48,12 @@ export function Header() {
           )}
         </div>
 
-        <Button variant="outline" size="sm" data-testid="logout-button" onClick={() => auth.signoutRedirect()}>
+        <Button
+          variant="outline"
+          size="sm"
+          data-testid="logout-button"
+          onClick={() => auth.signoutRedirect()}
+        >
           Sair
         </Button>
       </div>
