@@ -21,12 +21,12 @@ describe("CreateWalletUseCase", () => {
     useCase = new CreateWalletUseCase(mockRepo as any);
   });
 
-  test("creates a new wallet with balance 0 when none exists", async () => {
+  test("creates a new wallet with welcome bonus when none exists", async () => {
     const wallet = await useCase.execute("player-1");
 
     expect(wallet).toBeInstanceOf(Wallet);
     expect(wallet.playerId).toBe("player-1");
-    expect(wallet.balanceCents).toBe(0);
+    expect(wallet.balanceCents).toBe(100_000); // R$ 1.000,00 welcome bonus
   });
 
   test("calls repo.save for a new wallet", async () => {
@@ -36,7 +36,7 @@ describe("CreateWalletUseCase", () => {
     const savedWallet = mockRepo.save.mock.calls[0][0] as Wallet;
     expect(savedWallet).toBeInstanceOf(Wallet);
     expect(savedWallet.playerId).toBe("player-1");
-    expect(savedWallet.balanceCents).toBe(0);
+    expect(savedWallet.balanceCents).toBe(100_000); // R$ 1.000,00 welcome bonus
   });
 
   test("returns existing wallet without calling save (idempotent)", async () => {
