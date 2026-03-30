@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { GameLoopService } from "../services/game-loop.service";
 import type { BetRepository } from "../ports/bet.repository";
 import type { GameEventEmitter } from "../ports/game-event-emitter";
+import type { MetricsService } from "../../infrastructure/metrics/metrics.service";
 import { InvalidRoundStateError } from "../../domain/errors";
 
 @Injectable()
@@ -10,6 +11,7 @@ export class CashOutUseCase {
     private readonly gameLoop: GameLoopService,
     @Inject("BetRepository") private readonly betRepo: BetRepository,
     @Inject("GameEventEmitter") private readonly eventEmitter: GameEventEmitter,
+    @Inject("MetricsService") private readonly metrics: MetricsService | null,
   ) {}
 
   async execute(playerId: string): Promise<{
@@ -36,6 +38,7 @@ export class CashOutUseCase {
     const payout = bet.payoutCents;
 
     await this.betRepo.updateCashOut(round.id, playerId, multiplier, payout);
+    this.metrics?.recordCashout(payout);
 
     this.eventEmitter.emitBetCashedOut({
       playerId: bet.playerId,

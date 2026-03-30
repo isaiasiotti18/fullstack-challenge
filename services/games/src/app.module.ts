@@ -9,6 +9,8 @@ import { PrismaBetRepository } from "./infrastructure/database/bet.repository.im
 import { RabbitMQConsumer } from "./infrastructure/messaging/rabbitmq.consumer";
 import { OutboxPublisher } from "./infrastructure/messaging/outbox.publisher";
 import { OutboxPollerService } from "./infrastructure/messaging/outbox-poller.service";
+import { MetricsService } from "./infrastructure/metrics/metrics.service";
+import { MetricsController } from "./infrastructure/metrics/metrics.controller";
 
 import { GameLoopService } from "./application/services/game-loop.service";
 import { PlaceBetUseCase } from "./application/use-cases/place-bet.use-case";
@@ -33,6 +35,7 @@ import { GameGateway } from "./presentation/gateways/game.gateway";
     BetController,
     BetsController,
     LeaderboardController,
+    MetricsController,
   ],
   providers: [
     PrismaService,
@@ -58,6 +61,13 @@ import { GameGateway } from "./presentation/gateways/game.gateway";
     {
       provide: "GameEventEmitter",
       useExisting: GameGateway,
+    },
+
+    // Metrics
+    MetricsService,
+    {
+      provide: "MetricsService",
+      useExisting: MetricsService,
     },
 
     // Application services

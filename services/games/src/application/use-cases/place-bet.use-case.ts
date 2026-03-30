@@ -4,6 +4,7 @@ import { GameLoopService } from "../services/game-loop.service";
 import type { BetRepository } from "../ports/bet.repository";
 import type { MessagePublisher } from "../ports/message-publisher";
 import type { GameEventEmitter } from "../ports/game-event-emitter";
+import type { MetricsService } from "../../infrastructure/metrics/metrics.service";
 import { InvalidRoundStateError } from "../../domain/errors";
 
 @Injectable()
@@ -13,6 +14,7 @@ export class PlaceBetUseCase {
     @Inject("BetRepository") private readonly betRepo: BetRepository,
     @Inject("MessagePublisher") private readonly publisher: MessagePublisher,
     @Inject("GameEventEmitter") private readonly eventEmitter: GameEventEmitter,
+    @Inject("MetricsService") private readonly metrics: MetricsService | null,
   ) {}
 
   async execute(
@@ -35,6 +37,7 @@ export class PlaceBetUseCase {
     const bet = round.placeBet(playerId, amountCents, autoCashoutAt);
 
     await this.betRepo.save(bet, round.id);
+    this.metrics?.recordBet(amountCents);
 
     await this.publisher.publishBetPlaced({
       eventId: randomUUID(),

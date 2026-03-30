@@ -8,6 +8,7 @@ import type { RoundRepository } from "../ports/round.repository";
 import type { BetRepository } from "../ports/bet.repository";
 import type { MessagePublisher } from "../ports/message-publisher";
 import type { GameEventEmitter } from "../ports/game-event-emitter";
+import type { MetricsService } from "../../infrastructure/metrics/metrics.service";
 
 @Injectable()
 export class GameLoopService implements OnModuleInit, OnModuleDestroy {
@@ -32,6 +33,7 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
     @Inject("BetRepository") private readonly betRepo: BetRepository,
     @Inject("MessagePublisher") private readonly publisher: MessagePublisher,
     @Inject("GameEventEmitter") private readonly eventEmitter: GameEventEmitter,
+    @Inject("MetricsService") private readonly metrics: MetricsService | null,
   ) {}
 
   onModuleDestroy(): void {
@@ -87,6 +89,8 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
         hash,
       });
 
+      this.metrics?.roundPhase.set(1);
+
       this.logger.log(
         `Round ${this.currentRound.id} started (BETTING phase, crash @ ${crashPoint}x)`,
       );
@@ -109,6 +113,8 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
         roundId: this.currentRound.id,
         hash: this.currentRound.serverSeedHash,
       });
+
+      this.metrics?.roundPhase.set(2);
 
       this.logger.log(`Round ${this.currentRound.id} is now RUNNING`);
 
@@ -170,6 +176,9 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
         serverSeed: this.serverSeed,
         publicSeed: this.publicSeed,
       });
+
+      this.metrics?.recordRoundCrash(this.currentRound.crashPoint);
+      this.metrics?.roundPhase.set(3);
 
       this.logger.log(
         `Round ${this.currentRound.id} CRASHED at ${this.currentRound.crashPoint}x (${payouts.length} payouts)`,

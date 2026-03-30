@@ -1,4 +1,4 @@
-import { Logger } from "@nestjs/common";
+import { Inject, Logger } from "@nestjs/common";
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -8,6 +8,7 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import type { GameEventEmitter } from "../../application/ports/game-event-emitter";
+import type { MetricsService } from "../../infrastructure/metrics/metrics.service";
 
 @WebSocketGateway({
   cors: {
@@ -23,15 +24,19 @@ export class GameGateway
   @WebSocketServer()
   server!: Server;
 
+  constructor(@Inject("MetricsService") private readonly metrics: MetricsService | null) {}
+
   afterInit(): void {
     this.logger.log("WebSocket gateway initialized");
   }
 
   handleConnection(client: Socket): void {
+    this.metrics?.activeConnections.inc();
     this.logger.debug(`Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket): void {
+    this.metrics?.activeConnections.dec();
     this.logger.debug(`Client disconnected: ${client.id}`);
   }
 
