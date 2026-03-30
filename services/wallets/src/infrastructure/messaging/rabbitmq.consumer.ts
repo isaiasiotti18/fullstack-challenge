@@ -5,6 +5,7 @@ import type { BetPlacedMessage, RoundEndedMessage } from "./events";
 import type { WalletRepository } from "../../application/ports/wallet.repository";
 import { InsufficientBalanceError } from "../../domain/errors";
 import { PrismaService } from "../database/prisma.service";
+import { MetricsService } from "../metrics/metrics.service";
 
 @Injectable()
 export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
@@ -14,6 +15,7 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
     private readonly rabbitMQService: RabbitMQService,
     private readonly rabbitMQPublisher: RabbitMQPublisher,
     private readonly prisma: PrismaService,
+    private readonly metrics: MetricsService,
     @Inject("WalletRepository")
     private readonly walletRepository: WalletRepository,
   ) {}
@@ -139,6 +141,9 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
         }),
       ]);
 
+      this.metrics.debitsTotal.inc();
+      this.metrics.debitAmountCents.inc(msg.amountCents);
+
       this.logger.log(
         `Debited ${msg.amountCents} cents from player ${msg.playerId}. New balance: ${wallet.balanceCents} cents`,
       );
@@ -152,6 +157,7 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
       });
     } catch (error) {
       if (error instanceof InsufficientBalanceError) {
+        this.metrics.debitFailures.inc({ reason: "insufficient_balance" });
         this.logger.warn(`Insufficient balance for player ${msg.playerId}: ${error.message}`);
         await this.markInbox(msg.eventId, "FAILED", error.message);
         await this.rabbitMQPublisher.publishWalletDebitFailed({
@@ -226,6 +232,9 @@ export class RabbitMQConsumer implements OnModuleInit, OnModuleDestroy {
             data: { eventId: payoutEventId, routingKey: "round.ended" },
           }),
         ]);
+
+        this.metrics.creditsTotal.inc();
+        this.metrics.creditAmountCents.inc(payout.amountCents);
 
         this.logger.log(
           `Credited ${payout.amountCents} cents to player ${payout.playerId}. New balance: ${wallet.balanceCents} cents`,

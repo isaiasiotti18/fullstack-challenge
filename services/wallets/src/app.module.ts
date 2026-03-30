@@ -6,13 +6,15 @@ import { WalletRepositoryImpl } from "./infrastructure/database/wallet.repositor
 import { RabbitMQModule } from "./infrastructure/messaging/rabbitmq.module";
 import { RabbitMQConsumer } from "./infrastructure/messaging/rabbitmq.consumer";
 import { RabbitMQPublisher } from "./infrastructure/messaging/rabbitmq.publisher";
+import { MetricsService } from "./infrastructure/metrics/metrics.service";
+import { MetricsController } from "./infrastructure/metrics/metrics.controller";
 import { WalletsController } from "./presentation/controllers/wallets.controller";
 import { CreateWalletUseCase } from "./application/use-cases/create-wallet.use-case";
 import { GetWalletUseCase } from "./application/use-cases/get-wallet.use-case";
 
 @Module({
   imports: [ConfigModule.forRoot(), AuthModule, RabbitMQModule],
-  controllers: [WalletsController],
+  controllers: [WalletsController, MetricsController],
   providers: [
     PrismaService,
     {
@@ -21,6 +23,7 @@ import { GetWalletUseCase } from "./application/use-cases/get-wallet.use-case";
     },
     CreateWalletUseCase,
     GetWalletUseCase,
+    MetricsService,
     RabbitMQPublisher,
     RabbitMQConsumer,
   ],
