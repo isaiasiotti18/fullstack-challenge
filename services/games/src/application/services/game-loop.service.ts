@@ -1,13 +1,12 @@
 import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Round, RoundStatus } from "../../domain/round";
-import { BetStatus } from "../../domain/bet";
-import { calculateCrashPoint, hashServerSeed } from "../../domain/provably-fair";
-import { calculateMultiplier } from "../../domain/multiplier";
+import { GameEngine } from "../../domain/services/game-engine";
 import type { RoundRepository } from "../ports/round.repository";
 import type { BetRepository } from "../ports/bet.repository";
 import type { MessagePublisher } from "../ports/message-publisher";
 import type { GameEventEmitter } from "../ports/game-event-emitter";
+import type { Clock } from "../ports/clock";
 import type { MetricsService } from "../../infrastructure/metrics/metrics.service";
 
 @Injectable()
@@ -26,20 +25,21 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
   private readonly BETTING_DURATION_MS = 10_000;
   private readonly COOLDOWN_MS = 3_000;
   private readonly TICK_INTERVAL_MS = 100;
-  private readonly GROWTH_RATE = 0.06;
 
   constructor(
     @Inject("RoundRepository") private readonly roundRepo: RoundRepository,
     @Inject("BetRepository") private readonly betRepo: BetRepository,
     @Inject("MessagePublisher") private readonly publisher: MessagePublisher,
     @Inject("GameEventEmitter") private readonly eventEmitter: GameEventEmitter,
+    @Inject("Clock") private readonly clock: Clock,
+    @Inject("GameEngine") private readonly gameEngine: GameEngine,
     @Inject("MetricsService") private readonly metrics: MetricsService | null,
   ) {}
 
   onModuleDestroy(): void {
     this.shuttingDown = true;
     if (this.tickInterval) {
-      clearInterval(this.tickInterval);
+      this.clock.clearInterval(this.tickInterval);
       this.tickInterval = null;
     }
     this.currentRound = null;
@@ -47,7 +47,7 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     this.logger.log("Game loop initializing, starting first round in 2s...");
-    setTimeout(() => this.startNewRound(), 2000);
+    this.clock.setTimeout(() => this.startNewRound(), 2000);
   }
 
   private async startNewRound(): Promise<void> {
@@ -58,7 +58,11 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
       this.publicSeed = randomUUID();
       this.nonce++;
 
-      let crashPoint = calculateCrashPoint(this.serverSeed, this.publicSeed, this.nonce);
+      let { crashPoint, hash } = this.gameEngine.generateRoundParams(
+        this.serverSeed,
+        this.publicSeed,
+        this.nonce,
+      );
 
       const testPoints = process.env.TEST_CRASH_POINTS;
       if (testPoints && process.env.NODE_ENV !== "production") {
@@ -70,7 +74,6 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
           crashPoint = points[(this.nonce - 1) % points.length];
         }
       }
-      const hash = hashServerSeed(this.serverSeed);
 
       this.currentRound = new Round({
         id: randomUUID(),
@@ -81,7 +84,7 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
 
       await this.roundRepo.save(this.currentRound, this.serverSeed, this.publicSeed, this.nonce);
 
-      const now = Date.now();
+      const now = this.clock.now();
       this.eventEmitter.emitBettingPhase({
         roundId: this.currentRound.id,
         startsAt: new Date(now).toISOString(),
@@ -95,10 +98,10 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
         `Round ${this.currentRound.id} started (BETTING phase, crash @ ${crashPoint}x)`,
       );
 
-      setTimeout(() => this.startRunning(), this.BETTING_DURATION_MS);
+      this.clock.setTimeout(() => this.startRunning(), this.BETTING_DURATION_MS);
     } catch (error) {
       this.logger.error(`Failed to start new round: ${error}`);
-      setTimeout(() => this.startNewRound(), this.COOLDOWN_MS);
+      this.clock.setTimeout(() => this.startNewRound(), this.COOLDOWN_MS);
     }
   }
 
@@ -118,8 +121,8 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.log(`Round ${this.currentRound.id} is now RUNNING`);
 
-      this.roundStartTime = Date.now();
-      this.tickInterval = setInterval(() => this.tick(), this.TICK_INTERVAL_MS);
+      this.roundStartTime = this.clock.now();
+      this.tickInterval = this.clock.setInterval(() => this.tick(), this.TICK_INTERVAL_MS);
     } catch (error) {
       this.logger.error(`Failed to start running: ${error}`);
     }
@@ -129,10 +132,10 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
     if (!this.currentRound) return;
 
     try {
-      const elapsed = (Date.now() - this.roundStartTime) / 1000;
-      this.currentMultiplier = calculateMultiplier(elapsed, this.GROWTH_RATE);
+      const elapsed = (this.clock.now() - this.roundStartTime) / 1000;
+      this.currentMultiplier = this.gameEngine.calculateCurrentMultiplier(elapsed);
 
-      if (this.currentMultiplier >= this.currentRound.crashPoint) {
+      if (this.gameEngine.shouldCrash(this.currentMultiplier, this.currentRound.crashPoint)) {
         this.currentMultiplier = this.currentRound.crashPoint;
         await this.crashRound();
       } else {
@@ -142,7 +145,7 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(`Tick error, forcing crash: ${error}`);
       if (this.tickInterval) {
-        clearInterval(this.tickInterval);
+        this.clock.clearInterval(this.tickInterval);
         this.tickInterval = null;
       }
       await this.crashRound();
@@ -152,7 +155,7 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
   private async crashRound(): Promise<void> {
     if (!this.currentRound || this.tickInterval === null) return;
 
-    clearInterval(this.tickInterval);
+    this.clock.clearInterval(this.tickInterval);
     this.tickInterval = null;
 
     try {
@@ -186,7 +189,7 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
 
       this.currentRound = null;
 
-      setTimeout(() => this.startNewRound(), this.COOLDOWN_MS);
+      this.clock.setTimeout(() => this.startNewRound(), this.COOLDOWN_MS);
     } catch (error) {
       this.logger.error(`Failed to crash round: ${error}`);
     }
@@ -195,36 +198,26 @@ export class GameLoopService implements OnModuleInit, OnModuleDestroy {
   private async processAutoCashouts(): Promise<void> {
     if (!this.currentRound) return;
 
-    for (const [playerId, bet] of this.currentRound.bets) {
-      if (
-        bet.status === BetStatus.PENDING &&
-        bet.autoCashoutAt !== null &&
-        this.currentMultiplier >= bet.autoCashoutAt
-      ) {
-        try {
-          const cashedBet = this.currentRound.cashOut(playerId, this.currentMultiplier);
+    const results = this.gameEngine.processAutoCashouts(this.currentRound, this.currentMultiplier);
 
-          if (cashedBet.cashOutMultiplier != null && cashedBet.payoutCents != null) {
-            await this.betRepo.updateCashOut(
-              this.currentRound.id,
-              playerId,
-              cashedBet.cashOutMultiplier,
-              cashedBet.payoutCents,
-            );
+    for (const result of results) {
+      try {
+        await this.betRepo.updateCashOut(
+          this.currentRound.id,
+          result.playerId,
+          result.multiplier,
+          result.payoutCents,
+        );
 
-            this.eventEmitter.emitBetCashedOut({
-              playerId,
-              multiplier: cashedBet.cashOutMultiplier,
-              payoutCents: cashedBet.payoutCents,
-            });
+        this.eventEmitter.emitBetCashedOut({
+          playerId: result.playerId,
+          multiplier: result.multiplier,
+          payoutCents: result.payoutCents,
+        });
 
-            this.logger.log(
-              `Auto cashout for ${playerId} at ${cashedBet.cashOutMultiplier}x (target: ${bet.autoCashoutAt}x)`,
-            );
-          }
-        } catch (error) {
-          this.logger.warn(`Auto cashout failed for ${playerId}: ${error}`);
-        }
+        this.logger.log(`Auto cashout for ${result.playerId} at ${result.multiplier}x`);
+      } catch (error) {
+        this.logger.warn(`Auto cashout persistence failed for ${result.playerId}: ${error}`);
       }
     }
   }

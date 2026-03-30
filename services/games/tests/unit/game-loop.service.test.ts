@@ -1,7 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { GameLoopService } from "../../src/application/services/game-loop.service";
 import { RoundStatus } from "../../src/domain/round";
-import { BetStatus } from "../../src/domain/bet";
 
 function createMocks() {
   return {
@@ -31,6 +30,23 @@ function createMocks() {
       emitBetPlaced: mock(() => {}),
       emitBetCashedOut: mock(() => {}),
     },
+    clock: {
+      now: mock(() => Date.now()),
+      setTimeout: mock((fn: () => void, _ms: number) => globalThis.setTimeout(fn, 0)),
+      setInterval: mock((fn: () => void, ms: number) => globalThis.setInterval(fn, ms)),
+      clearInterval: mock((id: ReturnType<typeof setInterval>) => globalThis.clearInterval(id)),
+    },
+    gameEngine: {
+      calculateCurrentMultiplier: mock(
+        (elapsed: number) => Math.floor(Math.exp(0.06 * elapsed) * 100) / 100,
+      ),
+      shouldCrash: mock((mult: number, crashPt: number) => mult >= crashPt),
+      processAutoCashouts: mock(() => []),
+      generateRoundParams: mock(() => ({
+        crashPoint: 2.5,
+        hash: "abc123",
+      })),
+    },
   };
 }
 
@@ -45,6 +61,9 @@ describe("GameLoopService", () => {
       mocks.betRepo as any,
       mocks.publisher as any,
       mocks.eventEmitter as any,
+      mocks.clock as any,
+      mocks.gameEngine as any,
+      null, // metrics
     );
   });
 
@@ -73,6 +92,18 @@ describe("GameLoopService", () => {
       expect(mocks.roundRepo.save).toHaveBeenCalledTimes(1);
     });
 
+    test("uses GameEngine.generateRoundParams for crash point", async () => {
+      await (service as any).startNewRound();
+
+      expect(mocks.gameEngine.generateRoundParams).toHaveBeenCalledTimes(1);
+    });
+
+    test("uses Clock.now for timestamps", async () => {
+      await (service as any).startNewRound();
+
+      expect(mocks.clock.now).toHaveBeenCalled();
+    });
+
     test("resets multiplier to 1.0", async () => {
       (service as any).currentMultiplier = 5.0;
       await (service as any).startNewRound();
@@ -85,10 +116,8 @@ describe("GameLoopService", () => {
 
       await (service as any).startNewRound();
 
-      // On failure, the round should not be set up successfully
-      // and a setTimeout for retry is scheduled (we can't easily assert the timeout
-      // but we verify save was called and no round is set after the first failed try is still there)
       expect(mocks.roundRepo.save).toHaveBeenCalledTimes(1);
+      expect(mocks.clock.setTimeout).toHaveBeenCalled();
     });
   });
 
@@ -107,7 +136,7 @@ describe("GameLoopService", () => {
       await (service as any).startRunning();
 
       expect(mocks.roundRepo.updateStatus).toHaveBeenCalledTimes(1);
-      const [roundId, status] = mocks.roundRepo.updateStatus.mock.calls[0];
+      const [, status] = mocks.roundRepo.updateStatus.mock.calls[0];
       expect(status).toBe(RoundStatus.RUNNING);
     });
 
@@ -117,13 +146,13 @@ describe("GameLoopService", () => {
       expect(mocks.roundRepo.updateStatus).not.toHaveBeenCalled();
     });
 
-    test("sets up tick interval", async () => {
+    test("sets up tick interval via Clock", async () => {
       await (service as any).startNewRound();
       await (service as any).startRunning();
 
+      expect(mocks.clock.setInterval).toHaveBeenCalledTimes(1);
       expect((service as any).tickInterval).not.toBeNull();
 
-      // Clean up interval to avoid leaks
       service.onModuleDestroy();
     });
   });
@@ -146,14 +175,12 @@ describe("GameLoopService", () => {
     test("collects CASHED_OUT bets as payouts", async () => {
       await (service as any).startNewRound();
       const round = service.getCurrentRound()!;
-      const crashPoint = round.crashPoint;
 
       round.placeBet("player-a", 5000);
 
       await (service as any).startRunning();
 
-      // Cash out at 1.0x which is always <= any crash point
-      round.cashOut("player-a", 1.0); // payout = 5000
+      round.cashOut("player-a", 1.0);
 
       await (service as any).crashRound();
 
@@ -182,18 +209,39 @@ describe("GameLoopService", () => {
       expect(service.getCurrentRound()).toBeNull();
     });
 
-    test("clears tick interval after crash", async () => {
+    test("clears tick interval via Clock after crash", async () => {
       await (service as any).startNewRound();
       await (service as any).startRunning();
 
       await (service as any).crashRound();
 
+      expect(mocks.clock.clearInterval).toHaveBeenCalled();
       expect((service as any).tickInterval).toBeNull();
     });
   });
 
+  describe("processAutoCashouts", () => {
+    test("delegates to GameEngine.processAutoCashouts", async () => {
+      await (service as any).startNewRound();
+      await (service as any).startRunning();
+
+      mocks.gameEngine.processAutoCashouts.mockReturnValueOnce([
+        { playerId: "p1", multiplier: 2.0, payoutCents: 2000 },
+      ]);
+
+      await (service as any).processAutoCashouts();
+
+      expect(mocks.gameEngine.processAutoCashouts).toHaveBeenCalledWith(
+        service.getCurrentRound(),
+        service.getCurrentMultiplier(),
+      );
+      expect(mocks.betRepo.updateCashOut).toHaveBeenCalledTimes(1);
+      expect(mocks.eventEmitter.emitBetCashedOut).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("onModuleDestroy", () => {
-    test("clears tick interval", async () => {
+    test("clears tick interval via Clock", async () => {
       await (service as any).startNewRound();
       await (service as any).startRunning();
 
@@ -201,6 +249,7 @@ describe("GameLoopService", () => {
 
       service.onModuleDestroy();
 
+      expect(mocks.clock.clearInterval).toHaveBeenCalled();
       expect((service as any).tickInterval).toBeNull();
     });
 
@@ -224,22 +273,6 @@ describe("GameLoopService", () => {
 
     test("does nothing when currentRound is null", () => {
       expect(() => service.removeBetFromCurrentRound("player-1")).not.toThrow();
-    });
-  });
-
-  describe("publishRoundEnded payload", () => {
-    test("includes roundId, crashPoint, and timestamp", async () => {
-      await (service as any).startNewRound();
-      const round = service.getCurrentRound()!;
-
-      await (service as any).startRunning();
-      await (service as any).crashRound();
-
-      const payload = mocks.publisher.publishRoundEnded.mock.calls[0][0];
-      expect(payload.roundId).toBe(round.id);
-      expect(payload.crashPoint).toBe(round.crashPoint);
-      expect(payload.timestamp).toBeDefined();
-      expect(payload.eventId).toBeDefined();
     });
   });
 

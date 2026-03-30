@@ -11,6 +11,8 @@ import { OutboxPublisher } from "./infrastructure/messaging/outbox.publisher";
 import { OutboxPollerService } from "./infrastructure/messaging/outbox-poller.service";
 import { MetricsService } from "./infrastructure/metrics/metrics.service";
 import { MetricsController } from "./infrastructure/metrics/metrics.controller";
+import { SystemClock } from "./infrastructure/clock/system-clock";
+import { GameEngine } from "./domain/services/game-engine";
 
 import { GameLoopService } from "./application/services/game-loop.service";
 import { PlaceBetUseCase } from "./application/use-cases/place-bet.use-case";
@@ -68,6 +70,18 @@ import { GameGateway } from "./presentation/gateways/game.gateway";
     {
       provide: "MetricsService",
       useExisting: MetricsService,
+    },
+
+    // Clock abstraction
+    {
+      provide: "Clock",
+      useClass: SystemClock,
+    },
+
+    // Domain services
+    {
+      provide: "GameEngine",
+      useFactory: () => new GameEngine(0.06),
     },
 
     // Application services
