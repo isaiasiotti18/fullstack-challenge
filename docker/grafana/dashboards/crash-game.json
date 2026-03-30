@@ -1,0 +1,184 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "Rounds per Minute",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(crash_game_rounds_total[1m]) * 60",
+          "legendFormat": "rounds/min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "unit": "rpm"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Bets per Minute",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(crash_game_bets_total[1m]) * 60",
+          "legendFormat": "bets/min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "unit": "rpm"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "RTP (Return to Player)",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "crash_game_payouts_cents_total / crash_game_bets_amount_cents_total * 100",
+          "legendFormat": "RTP %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 200,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "green", "value": 95 },
+              { "color": "red", "value": 105 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Bet Volume (R$)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "crash_game_bets_amount_cents_total / 100",
+          "legendFormat": "Total wagered"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyBRL"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Crash Point Distribution",
+      "type": "histogram",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "crash_game_crash_point_bucket",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "title": "Wallet Operations",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(wallet_debits_total[5m]) * 60",
+          "legendFormat": "debits/min"
+        },
+        {
+          "expr": "rate(wallet_credits_total[5m]) * 60",
+          "legendFormat": "credits/min"
+        },
+        {
+          "expr": "rate(wallet_debit_failures_total[5m]) * 60",
+          "legendFormat": "failures/min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "rpm" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "failures/min" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Current Round Phase",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "crash_game_round_phase",
+          "legendFormat": "Phase"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "IDLE", "color": "gray" } } },
+            { "type": "value", "options": { "1": { "text": "BETTING", "color": "yellow" } } },
+            { "type": "value", "options": { "2": { "text": "RUNNING", "color": "green" } } },
+            { "type": "value", "options": { "3": { "text": "CRASHED", "color": "red" } } }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Active WebSocket Connections",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "crash_game_ws_active_connections",
+          "legendFormat": "Connections"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "purple" }
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["crash-game"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Crash Game - Overview",
+  "uid": "crash-game-overview",
+  "version": 1
+}
