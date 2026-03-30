@@ -352,4 +352,48 @@ describe("Round", () => {
       expect(payouts[0]).toEqual({ playerId: "p-1", amountCents: 2000 });
     });
   });
+
+  describe("getAutoCashoutCandidates", () => {
+    it("returns players whose bets should auto cashout", () => {
+      const round = new Round({ id: "r-1", crashPoint: 5.0, serverSeedHash: "abc" });
+      round.placeBet("p-1", 1000, 2.0);
+      round.placeBet("p-2", 2000, 3.0);
+      round.placeBet("p-3", 3000); // no auto cashout
+      round.startRunning();
+
+      const candidates = round.getAutoCashoutCandidates(2.5);
+      expect(candidates).toEqual(["p-1"]);
+    });
+
+    it("returns empty array when no candidates", () => {
+      const round = new Round({ id: "r-1", crashPoint: 5.0, serverSeedHash: "abc" });
+      round.placeBet("p-1", 1000, 3.0);
+      round.startRunning();
+
+      const candidates = round.getAutoCashoutCandidates(2.0);
+      expect(candidates).toEqual([]);
+    });
+
+    it("returns multiple candidates at same multiplier", () => {
+      const round = new Round({ id: "r-1", crashPoint: 5.0, serverSeedHash: "abc" });
+      round.placeBet("p-1", 1000, 2.0);
+      round.placeBet("p-2", 2000, 2.0);
+      round.startRunning();
+
+      const candidates = round.getAutoCashoutCandidates(2.0);
+      expect(candidates).toHaveLength(2);
+      expect(candidates).toContain("p-1");
+      expect(candidates).toContain("p-2");
+    });
+
+    it("excludes already cashed out bets", () => {
+      const round = new Round({ id: "r-1", crashPoint: 5.0, serverSeedHash: "abc" });
+      round.placeBet("p-1", 1000, 2.0);
+      round.startRunning();
+      round.cashOut("p-1", 1.5);
+
+      const candidates = round.getAutoCashoutCandidates(2.5);
+      expect(candidates).toEqual([]);
+    });
+  });
 });

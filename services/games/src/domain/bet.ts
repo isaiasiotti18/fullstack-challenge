@@ -73,6 +73,14 @@ export class Bet {
     this._status = BetStatus.CASHED_OUT;
   }
 
+  shouldAutoCashout(currentMultiplier: number): boolean {
+    return (
+      this._status === BetStatus.PENDING &&
+      this.autoCashoutAt !== null &&
+      currentMultiplier >= this.autoCashoutAt
+    );
+  }
+
   markAsLost(): void {
     if (this._status !== BetStatus.PENDING) {
       throw new InvalidBetStatusError(`Cannot mark bet as lost with status ${this._status}`);

@@ -98,6 +98,16 @@ export class Round {
     this._status = RoundStatus.RUNNING;
   }
 
+  getAutoCashoutCandidates(currentMultiplier: number): string[] {
+    const candidates: string[] = [];
+    for (const [playerId, bet] of this._bets) {
+      if (bet.shouldAutoCashout(currentMultiplier)) {
+        candidates.push(playerId);
+      }
+    }
+    return candidates;
+  }
+
   cashOut(playerId: string, currentMultiplier: number): Bet {
     if (this._status !== RoundStatus.RUNNING) {
       throw new InvalidRoundStateError(

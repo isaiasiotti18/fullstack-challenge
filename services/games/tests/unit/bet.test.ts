@@ -97,6 +97,36 @@ describe("Bet", () => {
     });
   });
 
+  describe("shouldAutoCashout", () => {
+    it("returns true when PENDING and multiplier >= autoCashoutAt", () => {
+      const bet = new Bet("player-1", 1000, 2.0);
+      expect(bet.shouldAutoCashout(2.0)).toBe(true);
+      expect(bet.shouldAutoCashout(2.5)).toBe(true);
+    });
+
+    it("returns false when multiplier < autoCashoutAt", () => {
+      const bet = new Bet("player-1", 1000, 2.0);
+      expect(bet.shouldAutoCashout(1.5)).toBe(false);
+    });
+
+    it("returns false when no autoCashoutAt set", () => {
+      const bet = new Bet("player-1", 1000);
+      expect(bet.shouldAutoCashout(5.0)).toBe(false);
+    });
+
+    it("returns false when bet is already CASHED_OUT", () => {
+      const bet = new Bet("player-1", 1000, 2.0);
+      bet.cashOut(1.5);
+      expect(bet.shouldAutoCashout(2.5)).toBe(false);
+    });
+
+    it("returns false when bet is LOST", () => {
+      const bet = new Bet("player-1", 1000, 2.0);
+      bet.markAsLost();
+      expect(bet.shouldAutoCashout(2.5)).toBe(false);
+    });
+  });
+
   describe("markAsLost", () => {
     it("transitions PENDING to LOST", () => {
       const bet = new Bet("player-1", 500);
