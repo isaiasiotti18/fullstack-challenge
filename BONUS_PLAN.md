@@ -88,16 +88,16 @@
 
 ### 9. Efeitos Sonoros
 
-- [ ] Assets em `frontend/public/sounds/` (bet, cashout, crash, tick, win)
-- [ ] Hook `use-sound.ts` com Web Audio API
-- [ ] Zustand slice para mute/unmute (localStorage)
-- [ ] Botão mute no header
-- **Arquivos:** `frontend/public/sounds/`, `use-sound.ts` (novo)
+- [x] Sons sintetizados via Web Audio API (bet, cashout, crash, tick, win)
+- [x] Hook `use-sound.ts` com store Zustand mute/unmute (localStorage)
+- [x] Hook `use-game-sounds.ts` integrado aos eventos do jogo via subscribe
+- [x] Botão mute no header
+- **Arquivos:** `frontend/src/hooks/use-sound.ts`, `use-game-sounds.ts`, `header.tsx`
 
 ### 10. Storybook
 
-- [ ] Instalar `@storybook/react-vite`
-- [ ] Stories: Button, Card, MultiplierGraph, BetControls, BetList, RoundHistory, Leaderboard
-- [ ] Config dark theme em `frontend/.storybook/`
-- [ ] Script `bun run storybook`
-- **Arquivos:** `frontend/.storybook/`, `frontend/src/stories/` (novos)
+- [x] `@storybook/react-vite` instalado e configurado
+- [x] Stories: Button, Card, Input, Badge, RoundHistory, Leaderboard
+- [x] Dark theme config em `frontend/.storybook/preview.ts`
+- [x] Scripts `bun run storybook` e `bun run build-storybook`
+- **Arquivos:** `frontend/.storybook/`, `frontend/src/stories/`
