@@ -369,16 +369,16 @@ Testes de ponta a ponta simulando fluxos reais do jogador no browser, utilizando
 
 **Cobertura (10 testes em 8 specs):**
 
-| Spec | Cenário |
-|------|---------|
-| `login.spec.ts` | Fluxo OIDC completo via Keycloak (redirect, login, callback) |
-| `wallet.spec.ts` | Auto-criação de wallet e exibição de saldo |
-| `bet-place.spec.ts` | Apostar durante fase BETTING, verificar toast e bet list |
-| `bet-lost.spec.ts` | Apostar → não sacar → crash → aposta marcada como perdida |
-| `bet-cashout.spec.ts` | Apostar → cash out durante RUNNING → saldo atualizado |
-| `validation.spec.ts` | Botão desabilitado durante RUNNING e após apostar (2 testes) |
-| `realtime.spec.ts` | Multiplicador atualiza em tempo real e round history após crash (2 testes) |
-| `provably-fair.spec.ts` | Verificação de seeds e crash point via endpoint `/verify` |
+| Spec                    | Cenário                                                                    |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `login.spec.ts`         | Fluxo OIDC completo via Keycloak (redirect, login, callback)               |
+| `wallet.spec.ts`        | Auto-criação de wallet e exibição de saldo                                 |
+| `bet-place.spec.ts`     | Apostar durante fase BETTING, verificar toast e bet list                   |
+| `bet-lost.spec.ts`      | Apostar → não sacar → crash → aposta marcada como perdida                  |
+| `bet-cashout.spec.ts`   | Apostar → cash out durante RUNNING → saldo atualizado                      |
+| `validation.spec.ts`    | Botão desabilitado durante RUNNING e após apostar (2 testes)               |
+| `realtime.spec.ts`      | Multiplicador atualiza em tempo real e round history após crash (2 testes) |
+| `provably-fair.spec.ts` | Verificação de seeds e crash point via endpoint `/verify`                  |
 
 **Seed determinística:**
 
@@ -495,3 +495,249 @@ Não obrigatórios, mas diferenciam candidatos excepcionais:
 Entre em contato com o recrutador.
 
 Boa sorte — e que o multiplicador esteja ao seu favor! 🎲
+
+---
+
+---
+
+# Implementação
+
+## Quick Start
+
+```bash
+git clone <repo-url>
+cd fullstack-challenge
+bun install
+bun run docker:up       # Sobe tudo: infra + serviços + frontend
+```
+
+Acesse:
+
+| Serviço               | URL                                             | Credenciais            |
+| --------------------- | ----------------------------------------------- | ---------------------- |
+| **App**               | http://localhost:3000                           | `player` / `player123` |
+| **Swagger (Games)**   | http://localhost:4001/docs                      | —                      |
+| **Swagger (Wallets)** | http://localhost:4002/docs                      | —                      |
+| **Grafana**           | http://localhost:3001                           | `admin` / `admin`      |
+| **Prometheus**        | http://localhost:9090                           | —                      |
+| **RabbitMQ**          | http://localhost:15672                          | `admin` / `admin`      |
+| **Keycloak**          | http://localhost:8080                           | `admin` / `admin`      |
+| **Storybook**         | `cd frontend && bun run storybook` (porta 6006) | —                      |
+
+Para multiplayer, abra abas/navegadores distintos e logue com `player`, `player2` ou `player3` (senha: `player123`).
+
+---
+
+## Decisões de Arquitetura
+
+### Comunicação entre Serviços: Transactional Outbox/Inbox
+
+**Problema**: Publicar um evento no RabbitMQ e salvar no banco de dados são duas operações que não compartilham transação. Se o serviço cair entre as duas, perdemos o evento ou ficamos em estado inconsistente.
+
+**Solução implementada**:
+
+- **Outbox (Games Service)**: Ao invés de publicar diretamente no RabbitMQ, o `OutboxPublisher` insere o evento na tabela `outbox_events` **dentro da mesma transação** do banco. Um `OutboxPollerService` roda a cada 1s, lê eventos não publicados, publica no RabbitMQ e marca como publicado. Eventos publicados são limpos após 24h.
+
+- **Inbox (Wallets Service)**: Todo evento recebido é registrado na tabela `inbox_events` com status `RECEIVED` antes de ser processado. A deduplicação acontece via tabela `processed_events` com verificação por `eventId`. O processamento do wallet (debit/credit) e o registro de idempotência acontecem **na mesma transação Prisma**. Eventos processados são limpos após 7 dias.
+
+**Trade-off**: O polling de 1s no outbox adiciona latência de até ~1s na entrega. Em troca, ganhamos **at-least-once delivery** garantido e **exactly-once processing** via inbox.
+
+### Provably Fair: HMAC-SHA256 + House Edge
+
+**Algoritmo** (`services/games/src/domain/provably-fair.ts`):
+
+1. `HMAC-SHA256(serverSeed, publicSeed:nonce)` gera um hash de 256 bits
+2. Primeiros 8 caracteres hex (32 bits) convertidos para inteiro
+3. **House edge (3%)**: se `intValue % 33 === 0`, crash instantâneo em `1.00x`
+4. Caso contrário: `crashPoint = floor((2^32 / (intValue + 1)) * 100) / 100`
+
+A distribuição resultante é `P(crash > x) ≈ 1/x`, garantindo fairness matemática. O hash do server seed é exibido **antes** da rodada iniciar — após o crash, as seeds são reveladas e qualquer jogador pode verificar independentemente via `GET /games/rounds/:id/verify`.
+
+**Trade-off**: O house edge de 3% é fixo e embutido no algoritmo. Uma alternativa seria torná-lo configurável, mas optei por simplicidade e transparência.
+
+### Precisão Monetária: Centavos Inteiros (BigInt)
+
+Todos os valores monetários são representados em **centavos inteiros**:
+
+- Domain: `number` (TypeScript) — sempre inteiros, validados no construtor do `Bet`
+- Banco: `BigInt` (PostgreSQL `BIGINT`) via Prisma
+- Cálculo de payout: `Math.floor(amountCents * multiplier)` — trunca, nunca arredonda para cima
+- Frontend: `Intl.NumberFormat` para exibição, conversão `cents / 100` apenas na UI
+
+**Trade-off**: Usar centavos inteiros é mais verboso que `Decimal.js`, mas elimina qualquer risco de imprecisão floating-point sem dependência externa.
+
+### Frontend: Vite + React 19 + Zustand
+
+**Por que Vite ao invés de Next.js/TanStack Start**: O crash game é uma SPA com estado em tempo real via WebSocket. SSR não agrega valor (não há SEO, o conteúdo é dinâmico). Vite oferece build mais rápido, HMR instantâneo e controle total.
+
+**Estado**:
+
+- **Zustand** para game state (phase, multiplier, bets) — atualizado por WebSocket em alta frequência (100ms ticks)
+- **TanStack Query** para server state (wallet balance, round history, leaderboard) — cache + invalidação automática
+
+**WebSocket strategy**: Server-to-client push apenas. Ações do jogador (bet, cashout) são REST. O socket sincroniza estado mid-round para jogadores que conectam durante a rodada.
+
+**Nginx como proxy**: O frontend em produção (Docker) usa nginx para servir assets estáticos e proxy `/api/*` para Kong e `/ws/*` para WebSocket, evitando CORS.
+
+### Auto Cashout: Server-side
+
+O auto cashout roda **no servidor** dentro do `GameLoopService.tick()`. A cada tick (100ms), o loop verifica todos os bets PENDING com `autoCashoutAt` definido e executa o cashout automaticamente quando `multiplier >= autoCashoutAt`.
+
+**Trade-off**: Executar no servidor garante que o cashout acontece mesmo se o jogador perder conexão. A desvantagem é que o cashout pode ocorrer em um multiplier ligeiramente acima do target (até +0.01x de imprecisão do tick interval).
+
+### Auto Bet: Client-side
+
+O auto bet roda **no frontend** via hook `useAutoBet`. Escuta transições de fase do game store:
+
+- Na fase `BETTING`: coloca aposta automaticamente via REST com delay de 500ms
+- Na fase `CRASHED`: registra win/loss e ajusta próxima aposta (Martingale: dobra; Fixed: mantém)
+- **Stop-loss**: para automaticamente quando perda acumulada >= limite
+
+**Trade-off**: Client-side significa que funciona apenas com o browser aberto. Server-side seria mais robusto mas adicionaria complexidade desnecessária para um feature de conveniência.
+
+### Rate Limiting: Kong Plugin
+
+Rate limiting implementado via plugin nativo do Kong (declarativo, zero código):
+
+- **Global**: 30 req/s, 1800 req/min
+- **Games Service**: 10 req/s, 600 req/min (mais restritivo para endpoints de aposta)
+
+**Trade-off**: Policy `local` (por instância Kong) ao invés de `redis` (distribuído). Para dev/single instance é suficiente. Em produção com múltiplas instâncias Kong, migrar para policy `redis`.
+
+### Observabilidade: prom-client direto
+
+Optei por `prom-client` ao invés do full OpenTelemetry SDK por ser mais leve e direto para métricas Prometheus. Cada serviço expõe `/metrics` com métricas custom (rounds, bets, RTP, WS connections) + métricas default do Node.js.
+
+**Trade-off**: Sem tracing distribuído (spans). Para adicionar tracing, bastaria incluir `@opentelemetry/sdk-node` com Jaeger exporter. A estrutura de métricas existente permaneceria.
+
+---
+
+## Stack de Testes
+
+### Unit Tests
+
+```bash
+cd services/games && bun test tests/unit     # 120 testes
+cd services/wallets && bun test tests/unit   # 25 testes
+```
+
+**Cobertura**:
+
+- Domain: Round (state machine, invariantes), Bet (validação, cashout, payout), Wallet (credit/debit, saldo negativo), Provably Fair (determinismo, hash chain)
+- Application: GameLoop (lifecycle, ticks, crash), PlaceBet, CashOut, VerifyRound use cases
+- Infrastructure: WebSocket gateway (event emission)
+
+### E2E Tests (Playwright)
+
+```bash
+bun run docker:test                    # Stack com crash points determinísticos
+bun run test:e2e                       # 10 testes em 8 specs
+bun run test:e2e:ui                    # Modo visual
+```
+
+**Specs**: Login OIDC, wallet creation, bet placement, bet loss, cashout, validações, real-time sync, provably fair verification.
+
+Crash points determinísticos via `TEST_CRASH_POINTS=2.00,5.00,1.50,10.00,1.00` (cíclico).
+
+### Storybook
+
+```bash
+cd frontend && bun run storybook       # Porta 6006
+```
+
+Stories para Button, Card, Input, Badge, RoundHistory e Leaderboard com dark theme casino.
+
+---
+
+## Observabilidade
+
+Após `bun run docker:up`, acesse:
+
+- **Grafana** em http://localhost:3001 (admin/admin) — dashboard "Crash Game - Overview" auto-provisionado
+- **Prometheus** em http://localhost:9090
+
+### Métricas disponíveis
+
+| Métrica                              | Serviço | Tipo      |
+| ------------------------------------ | ------- | --------- |
+| `crash_game_rounds_total`            | Games   | Counter   |
+| `crash_game_bets_total`              | Games   | Counter   |
+| `crash_game_bets_amount_cents_total` | Games   | Counter   |
+| `crash_game_cashouts_total`          | Games   | Counter   |
+| `crash_game_payouts_cents_total`     | Games   | Counter   |
+| `crash_game_crash_point`             | Games   | Histogram |
+| `crash_game_ws_active_connections`   | Games   | Gauge     |
+| `crash_game_round_phase`             | Games   | Gauge     |
+| `wallet_debits_total`                | Wallets | Counter   |
+| `wallet_credits_total`               | Wallets | Counter   |
+| `wallet_debit_failures_total`        | Wallets | Counter   |
+
+### Dashboard Grafana
+
+8 painéis: Rounds/min, Bets/min, RTP (Return to Player), Bet Volume (R$), Crash Point Distribution, Wallet Operations, Current Round Phase, Active WebSocket Connections.
+
+---
+
+## CI Pipeline
+
+GitHub Actions (`.github/workflows/ci.yml`) executa em push/PR para `main`:
+
+1. **Lint & Build** — Prisma generate + ESLint + Vite build
+2. **Unit Tests Games** — 120 testes (paralelo)
+3. **Unit Tests Wallets** — 25 testes (paralelo)
+4. **E2E Playwright** — Stack completa via Docker + 10 testes (após unit tests passarem)
+
+Playwright report é salvo como artifact por 14 dias.
+
+---
+
+## Estrutura Final do Projeto
+
+```
+fullstack-challenge/
+├── .github/workflows/ci.yml              # CI pipeline
+├── docker/
+│   ├── kong/kong.yml                      # API Gateway + rate limiting
+│   ├── keycloak/                          # Realm export + tema casino
+│   ├── postgres/init-databases.sh         # Init games + wallets DBs
+│   ├── prometheus/prometheus.yml          # Scrape config
+│   └── grafana/
+│       ├── provisioning/                  # Auto-provision datasource
+│       └── dashboards/crash-game.json     # Dashboard pré-configurado
+├── services/
+│   ├── games/
+│   │   ├── prisma/schema.prisma           # Round, Bet, OutboxEvent
+│   │   └── src/
+│   │       ├── domain/                    # Round, Bet, ProvablyFair, Multiplier
+│   │       ├── application/
+│   │       │   ├── services/game-loop.service.ts  # Core: lifecycle + auto cashout
+│   │       │   └── use-cases/             # PlaceBet, CashOut, Leaderboard, etc.
+│   │       ├── infrastructure/
+│   │       │   ├── messaging/             # Outbox publisher + poller + consumer
+│   │       │   ├── metrics/               # Prometheus metrics + /metrics endpoint
+│   │       │   └── database/              # Prisma repositories
+│   │       └── presentation/              # Controllers + WebSocket gateway
+│   └── wallets/
+│       ├── prisma/schema.prisma           # Wallet, ProcessedEvent, InboxEvent
+│       └── src/
+│           ├── domain/                    # Wallet (BigInt, credit/debit)
+│           ├── application/               # CreateWallet, GetWallet
+│           ├── infrastructure/
+│           │   ├── messaging/             # Inbox consumer + publisher
+│           │   └── metrics/               # Prometheus metrics
+│           └── presentation/              # WalletsController
+├── frontend/
+│   ├── .storybook/                        # Storybook config (dark theme)
+│   ├── nginx.conf                         # Proxy /api → Kong, /ws → WebSocket
+│   └── src/
+│       ├── components/                    # MultiplierGraph, BetControls, AutoBetPanel, Leaderboard, etc.
+│       ├── hooks/                         # useSound, useGameSounds, useAutoBet, useLeaderboard
+│       ├── stores/                        # game-store (Zustand), auto-bet-store
+│       ├── services/                      # api.ts, socket.ts, format.ts
+│       ├── stories/                       # Storybook stories
+│       └── pages/game.tsx                 # Main game page
+├── packages/e2e/                          # Playwright E2E tests
+├── docker-compose.yml
+├── docker-compose.test.yml                # Deterministic crash points for E2E
+└── BONUS_PLAN.md                          # Checklist de features bônus
+```
