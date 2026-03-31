@@ -20,7 +20,7 @@ export function GamePage() {
   const crashPoint = useGameStore((s) => s.crashPoint);
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col min-h-0">
       <span
         data-testid="game-phase"
         data-phase={phase}
@@ -32,14 +32,16 @@ export function GamePage() {
 
       <RoundHistory />
 
-      <div className="grid flex-1 gap-4 p-4 md:grid-cols-[1fr_360px]">
+      <div className="grid flex-1 min-h-0 overflow-hidden gap-4 p-4 md:grid-cols-[1fr_360px]">
         <MultiplierGraph />
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 min-h-0">
           <BetControls />
-          <AutoBetPanel />
-          <BetList />
-          <Leaderboard />
+          <div className="flex flex-col gap-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1">
+            <div className="shrink-0"><AutoBetPanel /></div>
+            <div className="shrink-0"><BetList /></div>
+            <div className="shrink-0"><Leaderboard /></div>
+          </div>
         </div>
       </div>
     </div>

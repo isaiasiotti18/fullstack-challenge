@@ -10,7 +10,7 @@ export function BetList() {
       <CardHeader className="pb-2">
         <CardTitle className="text-sm text-text-secondary">Apostas da Rodada</CardTitle>
       </CardHeader>
-      <CardContent className="max-h-[300px] overflow-y-auto p-4 pt-0">
+      <CardContent className="max-h-[200px] overflow-y-auto p-4 pt-0">
         {bets.length === 0 ? (
           <p className="py-4 text-center text-sm text-text-muted">Nenhuma aposta ainda</p>
         ) : (
@@ -21,15 +21,17 @@ export function BetList() {
                 data-testid="bet-entry"
                 className="flex items-center justify-between rounded px-2 py-1.5 text-sm"
               >
-                <span className="font-mono text-text-secondary">
+                <span className="font-mono text-text-secondary truncate min-w-0 flex-1">
                   {bet.username}
                 </span>
-                <span className="font-mono">{formatCents(bet.amountCents)}</span>
-                <BetStatus
-                  status={bet.status}
-                  multiplier={bet.multiplier}
-                  payoutCents={bet.payoutCents}
-                />
+                <span className="font-mono shrink-0">{formatCents(bet.amountCents)}</span>
+                <span className="shrink-0">
+                  <BetStatus
+                    status={bet.status}
+                    multiplier={bet.multiplier}
+                    payoutCents={bet.payoutCents}
+                  />
+                </span>
               </div>
             ))}
           </div>

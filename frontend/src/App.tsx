@@ -15,7 +15,7 @@ function App() {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen flex-col bg-bg-primary">
+      <div className="flex h-screen flex-col bg-bg-primary">
         <Header />
         <GamePage />
       </div>
